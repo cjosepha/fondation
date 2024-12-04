@@ -1,4 +1,5 @@
 {
+  "name": "backend-fondation",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox-viem": "^3.0.0",
     "dotenv": "^16.4.7",
