@@ -6,11 +6,11 @@ import {MockERC20} from "./MockERC20.sol";
 
 contract MockStBTC is MockERC20, IStBTC {
 
-    address private mintedTo;
-    uint256 private mintedAmount;
+    address public mintedTo;
+    uint256 public mintedAmount;
 
-    address private burnedFrom;
-    uint256 private burnedAmount;
+    address public burnedFrom;
+    uint256 public burnedAmount;
 
     function mint(address _to, uint256 _amount) external override {
         mintedTo = _to;

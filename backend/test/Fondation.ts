@@ -106,6 +106,46 @@ describe("Fondation", function () {
       expect(Number(event.args.when)).to.be.lessThanOrEqual(Number(after));
     });
 
+    it("should revert if the amount is 0", async function () {
+      const { contract, otherAccount } = await loadFixture(deployOnePercentFeesFondationFixture);
+      await expect(contract.write.stake([0], { account: otherAccount.account.address })).to.be.rejectedWith("You must specify an amount greater than 0");
+    });
+
+    it("should transfer the staked amount of wBTC from the user to the Fondation contract", async function () {
+      const { contract, otherAccount, mockWBTC } = await loadFixture(deployOnePercentFeesFondationFixture);
+      const amount = 100n;
+      await contract.write.stake([amount], { account: otherAccount.account.address });
+      expect((await mockWBTC.read.transferedFromFrom()).toLowerCase()).to.equal(otherAccount.account.address);
+      expect((await mockWBTC.read.transferedFromTo()).toLowerCase()).to.equal(contract.address);
+      expect(await mockWBTC.read.transferedFromAmount()).to.equal(amount);
+    });
+
+    it("should approve Pool contract to spend the staked amount of wBTC on behalf of the Fondation contract", async function () {
+      const { contract, otherAccount, mockWBTC, mockAavePool } = await loadFixture(deployOnePercentFeesFondationFixture);
+      const amount = 100n;
+      await contract.write.stake([amount], { account: otherAccount.account.address });
+      expect((await mockWBTC.read.approvedSpender()).toLowerCase()).to.equal(mockAavePool.address);
+      expect(await mockWBTC.read.approvedAmount()).to.equal(amount);
+    });
+
+    it("should supply the staked amount of wBTC in the Pool contract", async function () {
+      const { contract, otherAccount, mockWBTC, mockAavePool } = await loadFixture(deployOnePercentFeesFondationFixture);
+      const amount = 100n;
+      await contract.write.stake([amount], { account: otherAccount.account.address });
+      expect((await mockAavePool.read.suppliedAsset()).toLowerCase()).to.equal(mockWBTC.address);
+      expect((await mockAavePool.read.suppliedOnBehalfOf()).toLowerCase()).to.equal(contract.address);
+      expect(await mockAavePool.read.suppliedAmount()).to.equal(amount);
+      expect(await mockAavePool.read.suppliedReferralCode()).to.equal(0);
+    });
+
+    it("should mint the corresponding amount of stBTC to the user", async function () {
+      const { contract, otherAccount, mockStBTC } = await loadFixture(deployOnePercentFeesFondationFixture);
+      const amount = 100n;
+      await contract.write.stake([amount], { account: otherAccount.account.address });
+      expect((await mockStBTC.read.mintedTo()).toLowerCase()).to.equal(otherAccount.account.address);
+      expect(await mockStBTC.read.mintedAmount()).to.equal(amount);
+    });
+
   });
 
   describe("unstake", function () {

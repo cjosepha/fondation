@@ -7,13 +7,13 @@ contract MockERC20 is IERC20 {
 
     address public transferedFromFrom;
     address public transferedFromTo;
-    uint256 public transferedFromValue;
+    uint256 public transferedFromAmount;
 
     address public approvedSpender;
-    uint256 public approvedValue;
+    uint256 public approvedAmount;
 
     address public transferedTo;
-    uint256 public transferedValue;
+    uint256 public transferedAmount;
 
     uint256 private fakeTotalSupply;
 
@@ -47,7 +47,7 @@ contract MockERC20 is IERC20 {
         uint256 value
     ) external override returns (bool) {
         transferedTo = to;
-        transferedValue = value;
+        transferedAmount = value;
         return true;
     }
 
@@ -63,7 +63,7 @@ contract MockERC20 is IERC20 {
         uint256 value
     ) external override returns (bool) {
         approvedSpender = spender;
-        approvedValue = value;
+        approvedAmount = value;
         return true;
     }
 
@@ -74,7 +74,7 @@ contract MockERC20 is IERC20 {
     ) external override returns (bool) {
         transferedFromFrom = from;
         transferedFromTo = to;
-        transferedFromValue = value;
+        transferedFromAmount = value;
         return true;
     }
 }

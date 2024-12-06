@@ -6,6 +6,11 @@ import {DataTypes} from "@aave/core-v3/contracts/protocol/libraries/types/DataTy
 import {IPoolAddressesProvider} from "@aave/core-v3/contracts/interfaces/IPoolAddressesProvider.sol";
 
 contract MockAavePool is IPool {
+
+    address public suppliedAsset;
+    uint256 public suppliedAmount;
+    address public suppliedOnBehalfOf;
+    uint16 public suppliedReferralCode;
     
     function mintUnbacked(
         address asset,
@@ -25,7 +30,12 @@ contract MockAavePool is IPool {
         uint256 amount,
         address onBehalfOf,
         uint16 referralCode
-    ) external override {}
+    ) external override {
+        suppliedAsset = asset;
+        suppliedAmount = amount;
+        suppliedOnBehalfOf = onBehalfOf;
+        suppliedReferralCode = referralCode;
+    }
 
     function supplyWithPermit(
         address asset,
