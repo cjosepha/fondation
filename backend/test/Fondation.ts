@@ -11,30 +11,41 @@ describe("Fondation", function () {
     
     const fees = 100;
     const [owner, otherAccount] = await hre.viem.getWalletClients();
-    const contract = await hre.viem.deployContract("Fondation", [fees]);
+    const mockStBTC = await hre.viem.deployContract("MockStBTC");
+    const mockWBTC = await hre.viem.deployContract("MockERC20");
+    const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
+    const mockAavePool = await hre.viem.deployContract("MockAavePool");
+    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address]);
     const publicClient = await hre.viem.getPublicClient();
 
-    return { contract, owner, otherAccount, publicClient};
+    return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool };
   }
 
   async function deployFifteenPercentFeesFondationFixture() {
     const fees = 1500;
     const [owner, otherAccount] = await hre.viem.getWalletClients();
-    const contract = await hre.viem.deployContract("Fondation", [fees]);
+    const mockStBTC = await hre.viem.deployContract("MockStBTC");
+    const mockWBTC = await hre.viem.deployContract("MockERC20");
+    const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
+    const mockAavePool = await hre.viem.deployContract("MockAavePool");
+    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address]);
     const publicClient = await hre.viem.getPublicClient();
 
-    return { contract, owner, otherAccount, publicClient};
+    return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool};
   }
 
   async function deployOnePercentFeesFondationFixtureWithTenStaked() {
     const fees = 100;
-    const [owner, otherAccount] = await hre.viem.getWalletClients();
-    const contract = await hre.viem.deployContract("Fondation", [fees]);
+    const [owner, otherAccount] = await hre.viem.getWalletClients();const mockStBTC = await hre.viem.deployContract("MockStBTC");
+    const mockWBTC = await hre.viem.deployContract("MockERC20");
+    const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
+    const mockAavePool = await hre.viem.deployContract("MockAavePool");
+    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address]);
     const publicClient = await hre.viem.getPublicClient();
     
     await contract.write.stake([10], { account: otherAccount.account.address });
 
-    return { contract, owner, otherAccount, publicClient};
+    return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool};
   }
 
   describe("constructor", function () {

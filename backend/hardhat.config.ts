@@ -5,9 +5,16 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY;
-const PK = process.env.PK;
-const RPC_URL = process.env.INFURA_URL;
+const RPC_API_KEY = process.env.RPC_API_KEY;
+const RPC_URL = process.env.RPC_URL;
+const PK_SEPOLIA_AAVE = process.env.PK_SEPOLIA_AAVE;
 const ETHER_SCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
+
+console.log("COINMARKETCAP_API_KEY", COINMARKETCAP_API_KEY);
+console.log("RPC_API_KEY", RPC_API_KEY);
+console.log("RPC_URL", RPC_URL);
+console.log("PK_SEPOLIA_AAVE", PK_SEPOLIA_AAVE);
+console.log("ETHER_SCAN_API_KEY", ETHER_SCAN_API_KEY);
 
 const config: HardhatUserConfig = {
   solidity: "0.8.28",
@@ -18,15 +25,22 @@ const config: HardhatUserConfig = {
     gasPrice: 20
   },
   networks:{
-    holesky : {
-      url: RPC_URL ,
-      chainId: 17000,
-      accounts: [`0x${PK}`]
+    sepolia : {
+      url: `${RPC_URL}${RPC_API_KEY}` ,
+      chainId: 11155111,
+      accounts: [`0x${PK_SEPOLIA_AAVE}`]
+    },
+    hardhat: {
+      loggingEnabled: true,
+      forking: {
+        url: `${RPC_URL}${RPC_API_KEY}`,
+        blockNumber: 7217548
+      }
     }
   },
   etherscan:{
     apiKey:{
-      holesky:ETHER_SCAN_API_KEY
+      sepolia:ETHER_SCAN_API_KEY
     }
   }
 };

@@ -1,9 +1,19 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/Ownable.sol";
+import {IERC20} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
+import {IStBTC} from "./stBTC.sol";
+import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
+import {IAToken} from "@aave/core-v3/contracts/interfaces/IAToken.sol";
 
 contract Fondation is Ownable {
+
+    IERC20 private wBTC;
+    IAToken private aWBTC;
+    IStBTC private stBTC;
+
+    IPool private aavePool;
 
     uint public feesRate;
     uint public totalStaked = 0;
@@ -15,20 +25,41 @@ contract Fondation is Ownable {
      * @dev Constructor that sets the fees rate for the contract.
      * @param _feesRate The initial fees rate to be set, expressed in 0.01 of %.
      */
-    constructor(uint _feesRate) Ownable(msg.sender) {
+    constructor(uint _feesRate, IERC20 _wBTC, IAToken _aWBTC, IStBTC _stBTC, IPool _aavePool) {
         require(
             _feesRate > 0 && _feesRate <= 10000,
             "fees rate is expressed in 0.01 of % and should be between 0 and 10000"
         );
 
         feesRate = _feesRate;
+        wBTC = _wBTC;
+        aWBTC = _aWBTC;
+        stBTC = _stBTC;
+        aavePool = _aavePool;
     }
     
     function stake(uint _amount) public {
         
         require(_amount > 0, "You must specify an amount greater than 0");
 
-        // TODO: Implement the stake function
+        // Transfert wBTC from user to Fondation
+        wBTC.transferFrom(msg.sender, address(this), _amount);
+
+        // Approve Pool to spend on behalf of Fondation
+        bool approved = wBTC.approve(address(aavePool), _amount);
+        require(approved, "wBTC approval failed");
+
+        // Supply wBTC to Aave Pool
+        aavePool.supply(
+            address(wBTC),
+            _amount,
+            address(this),
+            0
+        );
+
+        // Mint stBTC to user
+        uint stBTCAmount = _amount * exchangeRate();
+        stBTC.mint(msg.sender, stBTCAmount);
 
         totalStaked += _amount;
 
@@ -39,17 +70,27 @@ contract Fondation is Ownable {
         
         require(_amount > 0, "You must specify an amount greater than 0");
 
-        // TODO: Implement the unstake function
+        // Burn stBTC from user
+        stBTC.burn(msg.sender, _amount);
 
-        totalStaked -= _amount;
+        // Withdraw wBTC from Aave Pool
+        uint wBTCAmount = _amount / exchangeRate();
+        aavePool.withdraw(
+            address(wBTC),
+            wBTCAmount,
+            msg.sender
+        );
 
-        emit Unstaked(_amount, block.timestamp); // TODO: Calculate the right amount of unstaked wBTC
+        totalStaked -= wBTCAmount;
+
+        emit Unstaked(wBTCAmount, block.timestamp); // TODO: Calculate the right amount of unstaked wBTC
     }
 
-    function exchangeRate() public view returns (uint) {
+    function exchangeRate() public pure returns (uint) {
 
         // TODO: Implement the exchange rate function
 
+        return 1;
     }
 
     function payout() public onlyOwner {
