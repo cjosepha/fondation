@@ -16,19 +16,20 @@ contract MockERC20 is IERC20 {
     uint256 public transferedValue;
 
     uint256 private fakeTotalSupply;
-    uint256 private fakeBalance;
-    uint256 private fakeAllowance;
+
+    mapping(address => uint256) private fakeBalances;
+    mapping(address => mapping(address => uint256)) private fakeAllowances;
 
     function setTotalSupply(uint256 _fakeTotalSupply) external {
         fakeTotalSupply = _fakeTotalSupply;
     }
 
-    function setBalance(uint256 _fakeBalance) external {
-        fakeBalance = _fakeBalance;
+    function setBalance(address account, uint256 balance) external {
+        fakeBalances[account] = balance;
     }
 
-    function setAllowance(uint256 _fakeAllowance) external {
-        fakeAllowance = _fakeAllowance;
+    function setAllowance(address owner, address spender, uint256 amount) external {
+        fakeAllowances[owner][spender] = amount;
     }
     
     function totalSupply() external view override returns (uint256) {
@@ -38,7 +39,7 @@ contract MockERC20 is IERC20 {
     function balanceOf(
         address account
     ) external view override returns (uint256) {
-        return fakeBalance;
+        return fakeBalances[account];
     }
 
     function transfer(
@@ -54,7 +55,7 @@ contract MockERC20 is IERC20 {
         address owner,
         address spender
     ) external view override returns (uint256) {
-        return fakeAllowance;
+        return fakeAllowances[owner][spender];
     }
 
     function approve(
