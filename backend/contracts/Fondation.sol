@@ -74,7 +74,7 @@ contract Fondation is Ownable {
         stBTC.burn(msg.sender, _amount);
 
         // Withdraw wBTC from Aave Pool
-        uint wBTCAmount = _amount / exchangeRate();
+        uint wBTCAmount = _amount * 100 / exchangeRate();
         aavePool.withdraw(
             address(wBTC),
             wBTCAmount,
