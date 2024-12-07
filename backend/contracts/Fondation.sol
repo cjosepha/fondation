@@ -7,6 +7,11 @@ import {IStBTC} from "./stBTC.sol";
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 import {IAToken} from "@aave/core-v3/contracts/interfaces/IAToken.sol";
 
+/**
+ * @title Fondation
+ * @dev The Fondation contract is an Ownable contract that serves as the foundation for other contracts.
+ * It inherits ownership functionality from the Ownable contract.
+ */
 contract Fondation is Ownable {
 
     IERC20 private wBTC;
@@ -90,11 +95,27 @@ contract Fondation is Ownable {
      * @dev Returns the current exchange rate.
      * @return The exchange rate as an unsigned integer expressed in 0.01 of %.
      */
-    function exchangeRate() public pure returns (uint) {
+    function exchangeRate() public view returns (uint) {
 
-        // TODO: Implement the exchange rate function
+        uint stBTCSupply = stBTC.totalSupply();
 
-        return 100;
+        if (stBTCSupply == 0) {
+            return 100;
+        }
+
+        uint aWBTCBalance = aWBTC.balanceOf(address(this));
+
+        if (aWBTCBalance == 0) {
+            return 100;
+        }
+
+        uint revenues = aWBTCBalance - totalStaked;
+
+        uint yield = revenues - ((revenues * feesRate) / 10000);
+
+        uint reserve = totalStaked + yield;
+
+        return reserve * 100 / stBTCSupply;
     }
 
     /**

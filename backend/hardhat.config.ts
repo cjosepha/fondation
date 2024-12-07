@@ -31,7 +31,6 @@ const config: HardhatUserConfig = {
       accounts: [`0x${PK_SEPOLIA_AAVE}`]
     },
     hardhat: {
-      loggingEnabled: true,
       forking: {
         url: `${RPC_URL}${RPC_API_KEY}`,
         blockNumber: 7217548

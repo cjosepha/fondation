@@ -52,7 +52,7 @@ describe("Fondation", function () {
 
     await contract.write.stake([20n], { account: otherAccount.account.address });
     await mockStBTC.write.setTotalSupply([20n]);
-    await mockAWBTC.write.setTotalSupply([24n]);
+    await mockAWBTC.write.setBalance([contract.address, 24n]);
 
     return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool };
 
@@ -191,17 +191,17 @@ describe("Fondation", function () {
 
   describe("exchangeRate", function () {
 
-    it("should be 100 (1) if there is no stake", async function () {
+    it("should be 100 (1.00%) if there is no stake", async function () {
       const { contract } = await loadFixture(deployFondationFixtureOnePercentFees);
       expect(await contract.read.exchangeRate()).to.equal(100n);
     });
 
-    it("should be 100 (1) if there is no yield", async function () {
+    it("should be 100 (1.00%) if there is no yield", async function () {
       const { contract } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
       expect(await contract.read.exchangeRate()).to.equal(100n);
     });
 
-    it("should be 115 (1) if there is a customer yield of 15%", async function () {
+    it("should be 115 (1.15%) if there is a customer yield of 15%", async function () {
       const { contract } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
       expect(await contract.read.exchangeRate()).to.equal(115n);
     });
