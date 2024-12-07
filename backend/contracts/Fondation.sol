@@ -58,7 +58,7 @@ contract Fondation is Ownable {
         );
 
         // Mint stBTC to user
-        uint stBTCAmount = _amount * exchangeRate();
+        uint stBTCAmount = (_amount * exchangeRate())/100;
         stBTC.mint(msg.sender, stBTCAmount);
 
         totalStaked += _amount;
@@ -86,13 +86,21 @@ contract Fondation is Ownable {
         emit Unstaked(wBTCAmount, block.timestamp); // TODO: Calculate the right amount of unstaked wBTC
     }
 
+    /**
+     * @dev Returns the current exchange rate.
+     * @return The exchange rate as an unsigned integer expressed in 0.01 of %.
+     */
     function exchangeRate() public pure returns (uint) {
 
         // TODO: Implement the exchange rate function
 
-        return 1;
+        return 100;
     }
 
+    /**
+     * @dev Transfers the contract's balance to the owner.
+     * Can only be called by the contract owner.
+     */
     function payout() public onlyOwner {
 
         // TODO: Implement the payout function
