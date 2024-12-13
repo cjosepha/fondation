@@ -33,7 +33,7 @@ describe("Fondation", function () {
     const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address]);
     const publicClient = await hre.viem.getPublicClient();
 
-    setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, 20n);
+    await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, 20n);
     await contract.write.stake([20n], { account: otherAccount.account.address });
     await mockStBTC.write.setBalance([otherAccount.account.address, 20n]);
     await mockStBTC.write.setTotalSupply([20n]);
@@ -53,7 +53,7 @@ describe("Fondation", function () {
     const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address]);
     const publicClient = await hre.viem.getPublicClient();
 
-    setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, 20n);
+    await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, 20n);
     await contract.write.stake([20n], { account: otherAccount.account.address });
     await mockStBTC.write.setBalance([otherAccount.account.address, 20n]);
     await mockStBTC.write.setTotalSupply([20n]);
@@ -107,7 +107,7 @@ describe("Fondation", function () {
     it("should update totalStaked value accordingly (exchangeRate = 1.15, with stake of 20)", async function () {
       const { contract, otherAccount, mockWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
       const amount = 100n;
-      setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
+      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
       expect(await contract.read.totalStaked()).to.equal(20n + amount);
     });
@@ -120,7 +120,7 @@ describe("Fondation", function () {
       const blockBefore = await publicClient.getBlock({ blockTag: "latest" });
       const before = blockBefore.timestamp; // Get the timestamp of the block
       
-      setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
+      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       const tx = await contract.write.stake([amount], { account: otherAccount.account.address });
       const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
       
@@ -142,10 +142,26 @@ describe("Fondation", function () {
       await expect(contract.write.stake([0], { account: otherAccount.account.address })).to.be.rejectedWith("You must specify an amount greater than 0");
     });
 
+    it("should revert if the amount is not allowed to be spend by the contract", async function () {
+      const { contract, otherAccount, mockWBTC } = await loadFixture(deployFondationFixtureOnePercentFees);
+      const amount = 100n;
+      await mockWBTC.write.setBalance([otherAccount.account.address, amount]);
+      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("ERC20: spender not allowed for amount");
+    });
+
+    it("should revert if the amount is higher than user balance", async function () {
+      const { contract, otherAccount, mockWBTC } = await loadFixture(deployFondationFixtureOnePercentFees);
+      const amount = 100n;
+      const balance = 50n;
+      await mockWBTC.write.setBalance([otherAccount.account.address, balance]);
+      await mockWBTC.write.setAllowance([otherAccount.account.address, contract.address, amount]);
+      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("ERC20: transfer amount exceeds balance");
+    });
+
     it("should transfer the staked amount of wBTC from the user to the Fondation contract", async function () {
       const { contract, otherAccount, mockWBTC } = await loadFixture(deployFondationFixtureOnePercentFees);
       const amount = 100n;
-      setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
+      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
       expect((await mockWBTC.read.transferedFromFrom()).toLowerCase()).to.equal(otherAccount.account.address);
       expect((await mockWBTC.read.transferedFromTo()).toLowerCase()).to.equal(contract.address);
@@ -155,7 +171,7 @@ describe("Fondation", function () {
     it("should approve Pool contract to spend the staked amount of wBTC on behalf of the Fondation contract", async function () {
       const { contract, otherAccount, mockWBTC, mockAavePool } = await loadFixture(deployFondationFixtureOnePercentFees);
       const amount = 100n;
-      setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
+      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
       expect((await mockWBTC.read.approvedSpender()).toLowerCase()).to.equal(mockAavePool.address);
       expect(await mockWBTC.read.approvedAmount()).to.equal(amount);
@@ -164,7 +180,7 @@ describe("Fondation", function () {
     it("should supply the staked amount of wBTC in the Pool contract", async function () {
       const { contract, otherAccount, mockWBTC, mockAavePool } = await loadFixture(deployFondationFixtureOnePercentFees);
       const amount = 100n;
-      setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
+      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
       expect((await mockAavePool.read.suppliedAsset()).toLowerCase()).to.equal(mockWBTC.address);
       expect((await mockAavePool.read.suppliedOnBehalfOf()).toLowerCase()).to.equal(contract.address);
@@ -175,7 +191,7 @@ describe("Fondation", function () {
     it("should mint the corresponding amount of stBTC to the user (exchangeRate = 1.00)", async function () {
       const { contract, otherAccount, mockStBTC, mockWBTC } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
       const amount = 100n;
-      setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
+      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
       expect((await mockStBTC.read.mintedTo()).toLowerCase()).to.equal(otherAccount.account.address);
       expect(await mockStBTC.read.mintedAmount()).to.equal(amount);
@@ -184,7 +200,7 @@ describe("Fondation", function () {
     it("should mint the corresponding amount of stBTC to the user (exchangeRate = 1.15)", async function () {
       const { contract, otherAccount, mockStBTC, mockWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
       const amount = 100n;
-      setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
+      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
       expect((await mockStBTC.read.mintedTo()).toLowerCase()).to.equal(otherAccount.account.address);
       expect(await mockStBTC.read.mintedAmount()).to.equal(86n); // 86.9565217 truncated
@@ -277,7 +293,7 @@ function decodeEventFromLogs(logs: Log[], index: number, contract: any): Event {
   });
 }
 
-function setBalanceAndAllowance(token: any, owner: Address, spender: Address, amount: bigint) {
-  token.write.setBalance([owner, amount]);
-  token.write.setAllowance([owner, spender, amount]);
+async function setBalanceAndAllowance(token: any, owner: Address, spender: Address, amount: bigint){
+  await token.write.setBalance([owner, amount]);
+  await token.write.setAllowance([owner, spender, amount]);
 }
