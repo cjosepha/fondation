@@ -46,6 +46,9 @@ contract MockERC20 is IERC20 {
         address to,
         uint256 value
     ) external override returns (bool) {
+        require(fakeBalances[msg.sender] >= value, "ERC20: transfer amount exceeds balance"); // Implementtaion of ERC20.transfer()
+        fakeBalances[msg.sender] -= value;
+        fakeBalances[to] += value;
         transferedTo = to;
         transferedAmount = value;
         return true;

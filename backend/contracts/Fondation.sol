@@ -22,7 +22,8 @@ contract Fondation is Ownable {
 
     uint public feesRate;
     uint public totalStaked = 0;
-
+    uint public bufferSize;
+    
     event Staked(uint amount, uint when);
     event Unstaked(uint amount, uint when);
 
@@ -80,7 +81,7 @@ contract Fondation is Ownable {
         stBTC.burn(msg.sender, _amount);
 
         // Withdraw wBTC from Aave Pool
-        (uint exchangeRate, uint reserve, uint yield) = exchangeRateAndYield();
+        (uint exchangeRate,,) = exchangeRateAndYield();
         uint wBTCAmount = _amount * exchangeRate / 100;
         aavePool.withdraw(
             address(wBTC),
@@ -88,13 +89,7 @@ contract Fondation is Ownable {
             msg.sender
         );
 
-        if (yield > 0) {
-            uint reserveShare = yield * 10000 / reserve;
-            uint totalStakedShare = wBTCAmount * reserveShare / 10000;
-            totalStaked -= (wBTCAmount - totalStakedShare);
-        } else {
-            totalStaked -= wBTCAmount;
-        }
+        totalStaked -= _amount;
 
         emit Unstaked(_amount, block.timestamp);
     }

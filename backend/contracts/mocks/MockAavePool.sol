@@ -11,6 +11,10 @@ contract MockAavePool is IPool {
     uint256 public suppliedAmount;
     address public suppliedOnBehalfOf;
     uint16 public suppliedReferralCode;
+
+    address public withdrawnAsset;
+    address public withdrawnTo;
+    uint256 public withdrawnAmount;
     
     function mintUnbacked(
         address asset,
@@ -52,7 +56,12 @@ contract MockAavePool is IPool {
         address asset,
         uint256 amount,
         address to
-    ) external override returns (uint256) {}
+    ) external override returns (uint256) {
+        withdrawnAsset = asset;
+        withdrawnAmount = amount;
+        withdrawnTo = to;
+        return amount;
+    }
 
     function borrow(
         address asset,
