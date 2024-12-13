@@ -63,7 +63,8 @@ contract Fondation is Ownable {
         );
 
         // Mint stBTC to user
-        uint stBTCAmount = (_amount * exchangeRate())/100;
+        (uint exchangeRate,,) = exchangeRateAndYield();
+        uint stBTCAmount = _amount * 100 / exchangeRate;
         stBTC.mint(msg.sender, stBTCAmount);
 
         totalStaked += _amount;
@@ -79,34 +80,41 @@ contract Fondation is Ownable {
         stBTC.burn(msg.sender, _amount);
 
         // Withdraw wBTC from Aave Pool
-        uint wBTCAmount = _amount * 100 / exchangeRate();
+        (uint exchangeRate, uint reserve, uint yield) = exchangeRateAndYield();
+        uint wBTCAmount = _amount * exchangeRate / 100;
         aavePool.withdraw(
             address(wBTC),
             wBTCAmount,
             msg.sender
         );
 
-        totalStaked -= wBTCAmount;
+        if (yield > 0) {
+            uint reserveShare = yield * 10000 / reserve;
+            uint totalStakedShare = wBTCAmount * reserveShare / 10000;
+            totalStaked -= (wBTCAmount - totalStakedShare);
+        } else {
+            totalStaked -= wBTCAmount;
+        }
 
-        emit Unstaked(wBTCAmount, block.timestamp); // TODO: Calculate the right amount of unstaked wBTC
+        emit Unstaked(_amount, block.timestamp);
     }
 
     /**
      * @dev Returns the current exchange rate.
      * @return The exchange rate as an unsigned integer expressed in 0.01 of %.
      */
-    function exchangeRate() public view returns (uint) {
+    function exchangeRateAndYield() public view returns (uint, uint, uint) {
 
         uint stBTCSupply = stBTC.totalSupply();
 
         if (stBTCSupply == 0) {
-            return 100;
+            return (100, 0, 0);
         }
 
         uint aWBTCBalance = aWBTC.balanceOf(address(this));
 
         if (aWBTCBalance == 0) {
-            return 100;
+            return (100, 0, 0);
         }
 
         uint revenues = aWBTCBalance - totalStaked;
@@ -115,7 +123,9 @@ contract Fondation is Ownable {
 
         uint reserve = totalStaked + yield;
 
-        return reserve * 100 / stBTCSupply;
+        uint exchangeRate = reserve * 100 / stBTCSupply;
+
+        return (exchangeRate, reserve, yield);
     }
 
     /**
@@ -126,5 +136,8 @@ contract Fondation is Ownable {
 
         // TODO: Implement the payout function
 
+    }
+
+    function getTotalFees() public view returns (uint) {
     }
 }

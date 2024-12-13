@@ -18,6 +18,7 @@ contract MockStBTC is MockERC20, IStBTC {
     }
 
     function burn(address _from, uint256 _amount) external override {
+        require(fakeBalances[_from] >= _amount, "stBTC: burn amount exceeds balance"); // Implementtaion of ERC20._burn()
         burnedFrom = _from;
         burnedAmount = _amount;
     }

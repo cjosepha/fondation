@@ -15,10 +15,10 @@ contract MockERC20 is IERC20 {
     address public transferedTo;
     uint256 public transferedAmount;
 
-    uint256 private fakeTotalSupply;
+    uint256 internal fakeTotalSupply;
 
-    mapping(address => uint256) private fakeBalances;
-    mapping(address => mapping(address => uint256)) private fakeAllowances;
+    mapping(address => uint256) internal fakeBalances;
+    mapping(address => mapping(address => uint256)) internal fakeAllowances;
 
     function setTotalSupply(uint256 _fakeTotalSupply) external {
         fakeTotalSupply = _fakeTotalSupply;
@@ -72,6 +72,10 @@ contract MockERC20 is IERC20 {
         address to,
         uint256 value
     ) external override returns (bool) {
+        require(fakeAllowances[from][msg.sender] >= value, "ERC20: spender not allowed for amount"); // Implementtaion of ERC20.transferFrom()
+        require(fakeBalances[from] >= value, "ERC20: transfer amount exceeds balance"); // Implementtaion of ERC20.transferFrom()
+        fakeBalances[from] -= value;
+        fakeBalances[to] += value;
         transferedFromFrom = from;
         transferedFromTo = to;
         transferedFromAmount = value;
