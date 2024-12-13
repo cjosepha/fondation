@@ -232,20 +232,36 @@ describe("Fondation", function () {
       expect(await mockAavePool.read.withdrawnAmount()).to.equal(amount);
     });
 
-    it("should update totalStaked value accordingly (exchangeRate = 1.15, with stake of 20)", async function () {
+    it("should update totalStaked value accordingly (exchangeRate = 1.15, with stake of 20, unstake of 15)", async function () {
       const { contract, otherAccount } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
       const amount = 15n;
       await contract.write.unstake([amount], { account: otherAccount.account.address });
       expect(await contract.read.totalStaked()).to.equal(20n - amount);
     });
 
-    it("should withdraw the correct amount of wBTC to the user (exchangeRate = 1.15, with stake of 20)", async function () {
+    it("should withdraw the correct amount of wBTC to the user (exchangeRate = 1.15, with stake of 20, unstake of 15)", async function () {
       const { contract, otherAccount, mockAavePool, mockWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
       const amount = 15n;
       await contract.write.unstake([amount], { account: otherAccount.account.address });
       expect((await mockAavePool.read.withdrawnTo()).toLowerCase()).to.equal(otherAccount.account.address);
       expect((await mockAavePool.read.withdrawnAsset()).toLowerCase()).to.equal(mockWBTC.address);
       expect(await mockAavePool.read.withdrawnAmount()).to.equal(17n);  // 15 * 1.15 = 17.25 truncated to 17
+    });
+
+    it("should withdraw the correct amount of wBTC to the user (exchangeRate = 1.15, with stake of 20, unstake of 20)", async function () {
+      const { contract, otherAccount, mockAavePool, mockWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
+      const amount = 20n;
+      await contract.write.unstake([amount], { account: otherAccount.account.address });
+      expect((await mockAavePool.read.withdrawnTo()).toLowerCase()).to.equal(otherAccount.account.address);
+      expect((await mockAavePool.read.withdrawnAsset()).toLowerCase()).to.equal(mockWBTC.address);
+      expect(await mockAavePool.read.withdrawnAmount()).to.equal(23n);  // 20 * 1.15 = 23
+    });
+
+    it("should update totalStaked value accordingly (exchangeRate = 1.15, with stake of 20, unstake of 20)", async function () {
+      const { contract, otherAccount } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
+      const amount = 20n;
+      await contract.write.unstake([amount], { account: otherAccount.account.address });
+      expect(await contract.read.totalStaked()).to.equal(0n);
     });
 
     it("should emit the Unstaked event", async function () {
