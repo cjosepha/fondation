@@ -22,10 +22,16 @@ contract Fondation is Ownable {
 
     uint public feesRate;
     uint public totalStaked = 0;
-    uint public bufferSize;
+    uint public paidFees = 0;
     
+    /**
+     * Stores the total yield that has been already accounted to calculte the fees payout.
+     */
+    uint private accountedYield = 0;
+
     event Staked(uint amount, uint when);
     event Unstaked(uint amount, uint when);
+    event FeesPaid(uint amount, uint when);
 
     /**
      * @dev Constructor that sets the fees rate for the contract.
@@ -112,15 +118,17 @@ contract Fondation is Ownable {
             return (100, 0, 0);
         }
 
-        uint revenues = aWBTCBalance - totalStaked;
+        uint nonAccountedRevenues = (aWBTCBalance - accountedYield) - totalStaked;
 
-        uint yield = revenues - ((revenues * feesRate) / 10000);
+        uint fees = nonAccountedRevenues * feesRate / 10000;
+
+        uint yield = nonAccountedRevenues + accountedYield - fees;
 
         uint reserve = totalStaked + yield;
 
         uint exchangeRate = reserve * 100 / stBTCSupply;
 
-        return (exchangeRate, reserve, yield);
+        return (exchangeRate, fees, yield);
     }
 
     /**
@@ -129,8 +137,19 @@ contract Fondation is Ownable {
      */
     function payout() public onlyOwner {
 
-        // TODO: Implement the payout function
+        (, uint fees, uint yield) = exchangeRateAndYield();
 
+        if (fees > 0) {
+            // Transfer fees to owner
+            bool success = aWBTC.transfer(owner(), fees);
+            require(success, "Failed to transfer fees to owner");
+            paidFees += fees;
+
+            // This yield amount must not be taken into account in future fees calculation
+            accountedYield += yield;
+
+            emit FeesPaid(fees, block.timestamp);
+        }
     }
 
     function getTotalFees() public view returns (uint) {

@@ -62,6 +62,27 @@ describe("Fondation", function () {
     return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool };
 
   }
+
+  async function deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_2() {
+
+    const fees = 2500;
+    const [owner, otherAccount] = await hre.viem.getWalletClients();
+    const mockStBTC = await hre.viem.deployContract("MockStBTC");
+    const mockWBTC = await hre.viem.deployContract("MockERC20");
+    const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
+    const mockAavePool = await hre.viem.deployContract("MockAavePool");
+    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address]);
+    const publicClient = await hre.viem.getPublicClient();
+
+    await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, 20n);
+    await contract.write.stake([20n], { account: otherAccount.account.address });
+    await mockStBTC.write.setBalance([otherAccount.account.address, 20n]);
+    await mockStBTC.write.setTotalSupply([20n]);
+    await mockAWBTC.write.setBalance([contract.address, 28n]);
+
+    return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool };
+
+  }
     
 
   describe("constructor", function () {
@@ -292,24 +313,83 @@ describe("Fondation", function () {
 
   describe("exchangeRate", function () {
 
-    it("should be 100 (1.00%) if there is no stake", async function () {
+    it("should be 100 (1.00) if there is no stake", async function () {
       const { contract } = await loadFixture(deployFondationFixtureOnePercentFees);
       expect(await contract.read.exchangeRateAndYield()).to.deep.equal([100n, 0n, 0n]);
     });
 
-    it("should be 100 (1.00%) if there is no yield", async function () {
+    it("should be 100 (1.00) if there is no yield", async function () {
       const { contract } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
       expect(await contract.read.exchangeRateAndYield()).to.deep.equal([100n, 0n, 0n]);
     });
 
-    it("should be 115 (1.15%) if there is a customer yield of 15%", async function () {
+    it("should be 115 (1.15) if there is a customer yield of 15%", async function () {
       const { contract } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
-      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([115n, 23n, 3n]);
+      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([115n, 1n, 3n]);
+    });
+
+    it("should be 130 (1.30) if there is a customer yield of 30%", async function () {
+      const { contract } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_2);
+      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([130n, 2n, 6n]);
     });
 
   });
 
   describe("payout", function () {
+
+    it("should revert if the caller is not the owner of the contract", async function () {
+      const { contract, otherAccount } = await loadFixture(deployFondationFixtureOnePercentFees);
+      await expect(contract.write.payout({ account: otherAccount.account.address })).to.be.rejectedWith("Ownable: caller is not the owner");
+    });
+
+    it("should send the correct amount of aWBTC to the owner (no yield)", async function () {
+      const { contract, owner, mockAWBTC } = await loadFixture(deployFondationFixtureOnePercentFees);
+      await contract.write.payout({ account: owner.account.address });
+      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(0n);
+    });
+
+    it("should send the correct amount of aWBTC to the owner (no yield, 20 staked)", async function () {
+      const { contract, owner, mockAWBTC } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
+      await contract.write.payout({ account: owner.account.address });
+      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(0n);
+    });
+
+    it("should send the correct amount of aWBTC to the owner (20 staked, with 30% yield)", async function () {
+      const { contract, owner, mockAWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_2);
+      await contract.write.payout({ account: owner.account.address });
+      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(2n);
+    });
+
+    it("should send nothing the second time it's called if yield didn't increase (no change in staking between calls)", async function () {
+      const { contract, owner, mockAWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_2);
+      await contract.write.payout({ account: owner.account.address });
+      await contract.write.payout({ account: owner.account.address });
+      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(2n);
+    });
+
+    it("should emit the FeesPaid event", async function () {
+      const { contract, owner, publicClient } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
+      
+      // Get the current block before the transaction
+      const blockBefore = await publicClient.getBlock({ blockTag: "latest" });
+      const before = blockBefore.timestamp; // Get the timestamp of the block
+      
+      const tx = await contract.write.payout({ account: owner.account.address });
+      const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      
+      // Get the current block after the transaction
+      const blockAfter = await publicClient.getBlock({ blockTag: "latest" });
+      const after = blockAfter.timestamp; // Get the timestamp of the block
+      
+      const event = decodeEventFromLogs(logs, 0, contract);
+      
+      expect(logs.length).to.equal(1);
+      expect(event.eventName).to.equal("FeesPaid");
+      expect(event.args.amount).to.equal(1n);
+      expect(Number(event.args.when)).to.be.greaterThanOrEqual(Number(before));
+      expect(Number(event.args.when)).to.be.lessThanOrEqual(Number(after));
+    });
+
   });
 
 });
