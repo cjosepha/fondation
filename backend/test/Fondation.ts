@@ -35,8 +35,6 @@ describe("Fondation", function () {
 
     await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, 20n);
     await contract.write.stake([20n], { account: otherAccount.account.address });
-    await mockStBTC.write.setBalance([otherAccount.account.address, 20n]);
-    await mockStBTC.write.setTotalSupply([20n]);
 
     return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool };
 
@@ -55,8 +53,6 @@ describe("Fondation", function () {
 
     await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, 20n);
     await contract.write.stake([20n], { account: otherAccount.account.address });
-    await mockStBTC.write.setBalance([otherAccount.account.address, 20n]);
-    await mockStBTC.write.setTotalSupply([20n]);
     await mockAWBTC.write.setBalance([contract.address, 24n]);
 
     return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool };

@@ -83,12 +83,13 @@ contract Fondation is Ownable {
         
         require(_amount > 0, "You must specify an amount greater than 0");
 
+        (uint exchangeRate,,) = exchangeRateAndYield();
+        uint wBTCAmount = _amount * exchangeRate / 100;
+
         // Burn stBTC from user
         stBTC.burn(msg.sender, _amount);
 
         // Withdraw wBTC from Aave Pool
-        (uint exchangeRate,,) = exchangeRateAndYield();
-        uint wBTCAmount = _amount * exchangeRate / 100;
         aavePool.withdraw(
             address(wBTC),
             wBTCAmount,
