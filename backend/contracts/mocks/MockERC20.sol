@@ -20,6 +20,11 @@ contract MockERC20 is IERC20 {
     mapping(address => uint256) internal fakeBalances;
     mapping(address => mapping(address => uint256)) internal fakeAllowances;
 
+    function addInterest(address account, uint256 amount) external {
+        fakeBalances[account] += amount;
+        fakeTotalSupply += amount;
+    }
+
     function setTotalSupply(uint256 _fakeTotalSupply) external {
         fakeTotalSupply = _fakeTotalSupply;
     }
@@ -65,6 +70,7 @@ contract MockERC20 is IERC20 {
         address spender,
         uint256 value
     ) external override returns (bool) {
+        fakeAllowances[msg.sender][spender] = value;
         approvedSpender = spender;
         approvedAmount = value;
         return true;

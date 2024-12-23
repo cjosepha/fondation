@@ -54,6 +54,8 @@ contract Fondation is Ownable {
         
         require(_amount > 0, "You must specify an amount greater than 0");
 
+        (uint exchangeRate,, uint yield) = exchangeRateAndYield();
+
         // Transfert wBTC from user to Fondation
         wBTC.transferFrom(msg.sender, address(this), _amount);
 
@@ -70,8 +72,7 @@ contract Fondation is Ownable {
         );
 
         // Mint stBTC to user
-        (uint exchangeRate,,) = exchangeRateAndYield();
-        uint stBTCAmount = _amount * 100 / exchangeRate;
+        uint stBTCAmount = _amount * 1_000_000 / exchangeRate;
         stBTC.mint(msg.sender, stBTCAmount);
 
         totalStaked += _amount;
@@ -83,11 +84,22 @@ contract Fondation is Ownable {
         
         require(_amount > 0, "You must specify an amount greater than 0");
 
-        (uint exchangeRate,,) = exchangeRateAndYield();
-        uint wBTCAmount = _amount * exchangeRate / 100;
+        (uint exchangeRate,, uint yield) = exchangeRateAndYield();
+        uint wBTCAmount = _amount * exchangeRate / 1_000_000;
 
         // Burn stBTC from user
         stBTC.burn(msg.sender, _amount);
+
+        uint yieldRatio = computeYieldRatio(yield);
+
+        totalStaked -= _amount;
+
+        uint costumerYield = wBTCAmount * yieldRatio / 1_000_000;
+        if (accountedYield >= costumerYield) {
+            accountedYield -= costumerYield;
+        } else {
+            accountedYield = 0;
+        }
 
         // Withdraw wBTC from Aave Pool
         aavePool.withdraw(
@@ -96,38 +108,36 @@ contract Fondation is Ownable {
             msg.sender
         );
 
-        totalStaked -= _amount;
-
         emit Unstaked(_amount, block.timestamp);
     }
 
     /**
      * @dev Returns the current exchange rate.
-     * @return The exchange rate as an unsigned integer expressed in 0.01 of %.
+     * @return The exchange rate as an unsigned integer expressed in 0.000001 of %.
      */
     function exchangeRateAndYield() public view returns (uint, uint, uint) {
 
         uint stBTCSupply = stBTC.totalSupply();
 
         if (stBTCSupply == 0) {
-            return (100, 0, 0);
+            return (1_000_000, 0, 0);
         }
 
         uint aWBTCBalance = aWBTC.balanceOf(address(this));
 
         if (aWBTCBalance == 0) {
-            return (100, 0, 0);
+            return (1_000_000, 0, 0);
         }
 
         uint nonAccountedRevenues = (aWBTCBalance - accountedYield) - totalStaked;
 
-        uint fees = nonAccountedRevenues * feesRate / 10000;
+        uint fees = nonAccountedRevenues * feesRate / 10_000;
 
-        uint yield = nonAccountedRevenues + accountedYield - fees;
+        uint yield = aWBTCBalance - totalStaked - fees;
 
         uint reserve = totalStaked + yield;
 
-        uint exchangeRate = reserve * 100 / stBTCSupply;
+        uint exchangeRate = reserve * 1_000_000 / stBTCSupply;
 
         return (exchangeRate, fees, yield);
     }
@@ -154,5 +164,16 @@ contract Fondation is Ownable {
     }
 
     function getTotalFees() public view returns (uint) {
+        return paidFees;
+    }
+
+
+    /**
+     * Stores the ratio of yield compared to the totalStaked. Expressed in 0.000001 of %.
+     * @param yield The yield value used to compute the ratio.
+     * @return The computed yield ratio.
+     */
+    function computeYieldRatio(uint yield) internal view returns (uint) {
+        return (yield * 1_000_000) / (totalStaked + yield);
     }
 }

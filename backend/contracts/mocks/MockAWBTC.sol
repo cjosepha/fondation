@@ -38,14 +38,21 @@ contract MockAWBTC is MockERC20, IAToken {
         address onBehalfOf,
         uint256 amount,
         uint256 index
-    ) external override returns (bool) {}
+    ) external override returns (bool) {
+        fakeBalances[onBehalfOf] += amount;
+        fakeTotalSupply += amount;
+        return true;
+    }
 
     function burn(
         address from,
         address receiverOfUnderlying,
         uint256 amount,
         uint256 index
-    ) external override {}
+    ) external override {
+        fakeBalances[from] -= amount;
+        fakeTotalSupply -= amount;
+    }
 
     function mintToTreasury(uint256 amount, uint256 index) external override {}
 

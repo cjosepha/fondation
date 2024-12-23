@@ -4,6 +4,8 @@ pragma solidity ^0.8.28;
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 import {DataTypes} from "@aave/core-v3/contracts/protocol/libraries/types/DataTypes.sol";
 import {IPoolAddressesProvider} from "@aave/core-v3/contracts/interfaces/IPoolAddressesProvider.sol";
+import {IAToken} from "@aave/core-v3/contracts/interfaces/IAToken.sol";
+import {MockERC20} from "./MockERC20.sol";
 
 contract MockAavePool is IPool {
 
@@ -15,6 +17,14 @@ contract MockAavePool is IPool {
     address public withdrawnAsset;
     address public withdrawnTo;
     uint256 public withdrawnAmount;
+
+    IAToken internal aWBTC;
+    MockERC20 internal wBTC;
+
+    constructor(IAToken _aWBTC, MockERC20 _wBTC) {
+        aWBTC = _aWBTC;
+        wBTC = _wBTC;
+    }    
     
     function mintUnbacked(
         address asset,
@@ -35,10 +45,13 @@ contract MockAavePool is IPool {
         address onBehalfOf,
         uint16 referralCode
     ) external override {
+        require(asset == address(wBTC), "MockAavePool: asset should be wBTC");
         suppliedAsset = asset;
         suppliedAmount = amount;
         suppliedOnBehalfOf = onBehalfOf;
         suppliedReferralCode = referralCode;
+        wBTC.transferFrom(msg.sender, address(this), amount);
+        aWBTC.mint(msg.sender, onBehalfOf, amount, 0);
     }
 
     function supplyWithPermit(
@@ -57,9 +70,12 @@ contract MockAavePool is IPool {
         uint256 amount,
         address to
     ) external override returns (uint256) {
+        require(asset == address(wBTC), "MockAavePool: asset should be wBTC");
         withdrawnAsset = asset;
         withdrawnAmount = amount;
         withdrawnTo = to;
+        aWBTC.burn(msg.sender, to, amount, 0);
+        wBTC.transfer(to, amount);
         return amount;
     }
 
