@@ -3,7 +3,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import hre from "hardhat";
-import { Address, decodeEventLog, getAddress, Log } from "viem";
+import { Address, decodeEventLog, getAddress, Log, parseUnits } from "viem";
 
 describe("Fondation", function () {
   
@@ -97,6 +97,26 @@ describe("Fondation", function () {
     await mockStBTC.write.transfer([unstaker.account.address, 200n], { account: staker1.account.address });
 
     return { contract, owner, staker1, staker2, unstaker, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool };
+
+  }
+
+  async function deployFondationFixtureTwentyTwentyPercentFeesWithStakeAndYield() {
+
+    const fees = 2000;
+    const [owner, user1, user2, user3] = await hre.viem.getWalletClients();
+    const mockStBTC = await hre.viem.deployContract("MockStBTC");
+    const mockWBTC = await hre.viem.deployContract("MockERC20");
+    const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address]);
+    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address]);
+    const publicClient = await hre.viem.getPublicClient();
+
+    await setBalanceAndAllowance(mockWBTC, user1.account.address, contract.address, toBigInt('100'));
+    await contract.write.stake([parseUnits('100', 8)], { account: user1.account.address });
+    await mockAWBTC.write.addInterest([contract.address, parseUnits('20', 8)]);
+    await mockWBTC.write.addInterest([mockAavePool.address, parseUnits('20', 8)]);
+
+    return { contract, owner, user1, user2, user3, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool };
 
   }
     
@@ -352,27 +372,27 @@ describe("Fondation", function () {
 
     it("should be 100 (1.00) if there is no stake", async function () {
       const { contract } = await loadFixture(deployFondationFixtureOnePercentFees);
-      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([1000000n, 0n, 0n]);
+      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([100000000n, 0n, 0n]);
     });
 
     it("should be 100 (1.00) if there is no yield", async function () {
       const { contract } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
-      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([1000000n, 0n, 0n]);
+      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([100000000n, 0n, 0n]);
     });
 
     it("should be 1150000 (1.15) if there is a customer yield of 15%", async function () {
       const { contract } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
-      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([1150000n, 1n, 3n]);
+      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([115000000n, 1n, 3n]);
     });
 
     it("should be 1300000 (1.30) if there is a customer yield of 30%", async function () {
       const { contract } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_2);
-      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([1300000n, 2n, 6n]);
+      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([130000000n, 2n, 6n]);
     });
 
     it("should be 100600 (1.006) if there is a customer yield of 0.006%", async function () {
       const { contract } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_3);
-      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([1006000n, 1n, 3n]);
+      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([100600000n, 1n, 3n]);
     });
 
     it("should be 1000000 (1.00) if there is no yield, with additional stake", async function () {
@@ -380,7 +400,7 @@ describe("Fondation", function () {
       const amount = 100n;
       await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
-      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([1000000n, 0n, 0n]);
+      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([100000000n, 0n, 0n]);
     });
 
     it("should be 1160377 (1.160377) if there is a yield of 16.0377%, with additional stake", async function () {
@@ -388,7 +408,7 @@ describe("Fondation", function () {
       const amount = 100n;
       await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
-      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([1160377n, 1n, 3n]);
+      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([116037735n, 1n, 3n]);
     });
 
     it("should be 1312500 (1.30) if there is a customer yield of 30%, with additional stake", async function () {
@@ -396,7 +416,7 @@ describe("Fondation", function () {
       const amount = 100n;
       await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
-      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([1312500n, 2n, 6n]);
+      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([131250000n, 2n, 6n]);
     });
 
   });
@@ -482,6 +502,100 @@ describe("Fondation", function () {
 
     });
 
+    it("stake 100 wBTC, then revenues 20 aWBTC, then unstake 100 stBTC, then payout", async function () {
+
+      const { contract, owner, user1, mockStBTC, mockAWBTC, mockWBTC } = await loadFixture(deployFondationFixtureTwentyTwentyPercentFeesWithStakeAndYield);
+
+      // The owner should have 0 aWBTC
+      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(0n);
+
+      // The user should have 100 stBTC
+      expect(await mockStBTC.read.balanceOf([user1.account.address])).to.equal(toBigInt('100'));
+
+      // The contract should have 100+20 aWBTC
+      expect(await mockAWBTC.read.balanceOf([contract.address])).to.equal(toBigInt('120'));
+
+      // The contract totalStaked value should be 100
+      expect(await contract.read.totalStaked()).to.equal(toBigInt('100'));
+
+      // The exchange rate should be 1.16, the fees 4 wBTC and the yield 16 wBTC
+      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([116000000n, toBigInt('4'), toBigInt('16')]);
+
+      // Total supply of stBTC should be 100
+      expect(await mockStBTC.read.totalSupply()).to.equal(toBigInt('100'));
+
+      // Total supply of aWBTC should be 120
+      expect(await mockAWBTC.read.totalSupply()).to.equal(toBigInt('120'));
+      
+      // Unstake 100 stBTC (the whole user stake)
+      await contract.write.unstake([toBigInt('100')], { account: user1.account.address });
+      
+      // The contract totalStaked value should be 0 wBTC
+      expect(await contract.read.totalStaked()).to.equal(0n);
+
+      // The exchange rate should be 1.00, the fees 4 wBTC and the yield 16 wBTC
+      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([100000000n, toBigInt('4'), toBigInt('0')]);
+     
+      // The user should have 0 stBTC
+      expect(await mockStBTC.read.balanceOf([user1.account.address])).to.equal(0n);
+
+      // The user should have 100+16 wBTC
+      expect(await mockWBTC.read.balanceOf([user1.account.address])).to.equal(toBigInt('116'));
+
+      // Total supply of stBTC should be 0
+      expect(await mockStBTC.read.totalSupply()).to.equal(0n);
+
+      // The contract should only have the 4 aWBTC of the fees
+      expect(await mockAWBTC.read.balanceOf([contract.address])).to.equal(toBigInt('4'));
+
+      // The owner retrieves the fees
+      await contract.write.payout({ account: owner.account.address });
+
+      // The owner should have 4 aWBTC
+      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(toBigInt('4'));
+
+    });
+
+    it("stake 100 wBTC, then revenues 20 aWTC, then stake 200 wBTC, then unstake the last stake", async function () {
+
+      const { contract, owner, user1, user2, mockStBTC, mockWBTC, mockAWBTC } = await loadFixture(deployFondationFixtureTwentyTwentyPercentFeesWithStakeAndYield);
+
+      // Stake 200 wBTC (user2)
+      await setBalanceAndAllowance(mockWBTC, user2.account.address, contract.address, toBigInt('200'));
+      await contract.write.stake([toBigInt('200')], { account: user2.account.address });
+
+      // The user2 should have 172.4137931 stBTC
+      expect(await mockStBTC.read.balanceOf([user2.account.address])).to.equal(toBigInt('172.4137931'));
+
+      // The user2 should have 0 wBTC
+      expect(await mockWBTC.read.balanceOf([user2.account.address])).to.equal(0n);
+      
+      // The contract totalStaked value should be 300 wBTC
+      expect(await contract.read.totalStaked()).to.equal(parseUnits('300', 8));
+
+      // The exchange rate should be 1.16, the fees 4 wBTC and the yield 16 wBTC
+      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([116000000n, toBigInt('4'), toBigInt('16')]);
+
+      // Unstake 172.4137931 stBTC (user2)
+      await contract.write.unstake([parseUnits('172.4137931', 8)], { account: user2.account.address });
+
+      // The user2 should have 0 stBTC
+      expect(await mockStBTC.read.balanceOf([user2.account.address])).to.equal(0n);
+
+      // The user2 should have 200 wBTC
+      expect(await mockWBTC.read.balanceOf([user2.account.address])).to.equal(toBigInt('199.99999999')); // ERROR : not exactly 200 wBTC
+
+      // Total supply of stBTC should be 100
+      expect(await mockStBTC.read.totalSupply()).to.equal(toBigInt('100'));
+
+      // Total supply of aWBTC should be 120
+      expect(await mockAWBTC.read.totalSupply()).to.equal(toBigInt('120.00000001'));
+
+      // The exchange rate should be 1.16, the fees 4 wBTC and the yield 16 wBTC
+      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([116000000n, toBigInt('4'), toBigInt('16')]); // ERROR :  all 3 values has changed.
+      
+    });
+
   });
 
 });
@@ -502,4 +616,8 @@ function decodeEventFromLogs(logs: Log[], index: number, contract: any): Event {
 async function setBalanceAndAllowance(token: any, owner: Address, spender: Address, amount: bigint){
   await token.write.setBalance([owner, amount]);
   await token.write.setAllowance([owner, spender, amount]);
+}
+
+function toBigInt(stringNumber: string): bigint {
+  return parseUnits(stringNumber, 8);
 }
