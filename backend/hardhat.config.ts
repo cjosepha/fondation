@@ -30,12 +30,12 @@ const config: HardhatUserConfig = {
       chainId: 11155111,
       accounts: [`0x${PK_SEPOLIA_AAVE}`]
     },
-    hardhat: {
+    /*hardhat: {
       forking: {
         url: `${RPC_URL}${RPC_API_KEY}`,
         blockNumber: 7217548
       }
-    }
+    }*/
   },
   etherscan:{
     apiKey:{
