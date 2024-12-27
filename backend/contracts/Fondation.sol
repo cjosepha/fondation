@@ -6,11 +6,12 @@ import {IERC20} from "@aave/core-v3/contracts/dependencies/openzeppelin/contract
 import {IStBTC} from "./stBTC.sol";
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 import {IAToken} from "@aave/core-v3/contracts/interfaces/IAToken.sol";
+import {IFondationStrategy} from "./IFondationStrategy.sol";
 
 /**
  * @title Fondation
- * @dev The Fondation contract is an Ownable contract that serves as the foundation for other contracts.
- * It inherits ownership functionality from the Ownable contract.
+ * The Fondation contract is the user facade of the Fondation system.
+ * Users interact with this contract to stake and unstake wBTC.
  */
 contract Fondation is Ownable {
 
@@ -19,19 +20,19 @@ contract Fondation is Ownable {
     IStBTC private stBTC;
 
     IPool private aavePool;
+    IFondationStrategy private strategy;
 
     uint public feesRate;
-    uint public totalStaked = 0;
-    uint public paidFees = 0;
-    
-    /**
-     * Stores the total yield that has been already accounted to calculte the fees payout.
-     */
-    uint private accountedYield = 0;
 
-    event Staked(uint amount, uint when);
-    event Unstaked(uint amount, uint when);
-    event FeesPaid(uint amount, uint when);
+    modifier onlyStrategy() {
+        require(isStrategyInitialized(), "A IFondationStrategy contract must be set");
+        require(msg.sender == address(strategy), "Caller must be the current IFondationStrategy contract");
+        _;
+    }
+
+    event Staked(uint amount, uint when); // Amount of wBTC that has been staked.
+    event Unstaked(uint amount, uint when); // Amount of staked wBTC that has been unstaked.
+    event FeesPaid(uint amount, uint when); // Amount of fees that has been paid to the owner of the contract.
 
     /**
      * @dev Constructor that sets the fees rate for the contract.
@@ -54,127 +55,129 @@ contract Fondation is Ownable {
         
         require(_amount > 0, "You must specify an amount greater than 0");
 
-        (uint exchangeRate,,) = exchangeRateAndYield();
+        uint rate = exchangeRate();
 
         // Transfert wBTC from user to Fondation
         wBTC.transferFrom(msg.sender, address(this), _amount);
 
-        // Approve Pool to spend on behalf of Fondation
-        bool approved = wBTC.approve(address(aavePool), _amount);
-        require(approved, "wBTC approval failed");
+        supplyToPool(_amount);
 
-        // Supply wBTC to Aave Pool
-        aavePool.supply(
-            address(wBTC),
-            _amount,
-            address(this),
-            0
-        );
+        if (isStrategyInitialized()) {
+
+            // TODO: borrow strategy asset from Aave Pool
+
+            uint strategyAssetBalance = IERC20(strategy.getAsset()).balanceOf(address(this)); // TODO: get exact amount from borrow result, to reduce gas
+
+            // Deposit strategy asset to the IFondationStrategy contract
+            depositToStrategy(strategyAssetBalance);
+        }
 
         // Mint stBTC to user
-        uint stBTCAmount = _amount * 100_000_000 / exchangeRate;
+        uint stBTCAmount = _amount * 100_000_000 / rate;
         stBTC.mint(msg.sender, stBTCAmount);
-
-        totalStaked += _amount;
 
         emit Staked(_amount, block.timestamp);
     }
 
     function unstake(uint _amount) public {
         
+        require(isStrategyInitialized(), "A IFondationStrategy contract must be set");
         require(_amount > 0, "You must specify an amount greater than 0");
 
-        (uint exchangeRate,, uint yield) = exchangeRateAndYield();
-        uint wBTCAmount = _amount * exchangeRate / 100_000_000;
+        uint rate = exchangeRate();
+        uint wBTCAmount = _amount * rate / 100_000_000;
 
         // Burn stBTC from user
+        // This will revert if the user doesn't have enough stBTC
         stBTC.burn(msg.sender, _amount);
 
-        uint yieldRatio = computeYieldRatio(yield);
+        // Withdraw wBTC from the IFondationStrategy contract and send it to the caller
+        strategy.withdraw(wBTCAmount);
 
-        uint costumerYield = wBTCAmount * yieldRatio / 100_000_000;
-        if (accountedYield >= costumerYield) {
-            accountedYield -= costumerYield;
-        } else {
-            accountedYield = 0;
-        }
-        
-        uint initialStake = wBTCAmount - costumerYield;
-        if (initialStake > totalStaked) {
-            totalStaked = 0;
-        } else {
-            totalStaked -= initialStake;
-        }
-
-        // Withdraw wBTC from Aave Pool
-        aavePool.withdraw(
-            address(wBTC),
-            wBTCAmount,
-            msg.sender
-        );
-
-        emit Unstaked(_amount, block.timestamp);
+        emit Unstaked(wBTCAmount, block.timestamp);
     }
 
     /**
      * @dev Returns the current exchange rate.
      * @return The exchange rate as an unsigned integer expressed in 0.00000001 of %.
      */
-    function exchangeRateAndYield() public view returns (uint, uint, uint) {
+    function exchangeRate() public view returns (uint) {
 
         uint stBTCSupply = stBTC.totalSupply();
         uint aWBTCBalance = aWBTC.balanceOf(address(this));
 
         if (stBTCSupply == 0) {
-            // The exchange rate should be 1.0 and any aWBTC balance should be considered as fees
-            return (100_000_000, aWBTCBalance, 0);
+            // The exchange rate should be 1.0
+            return 100_000_000;
         }
 
-        uint nonAccountedRevenues = (aWBTCBalance - accountedYield) - totalStaked;
-
-        uint fees = nonAccountedRevenues * feesRate / 10_000;
-
-        uint yield = aWBTCBalance - totalStaked - fees;
-
-        uint reserve = aWBTCBalance - fees;
-
-        uint exchangeRate = reserve * 100_000_000 / stBTCSupply;
-
-        return (exchangeRate, fees, yield);
+        return aWBTCBalance * 100_000_000 / stBTCSupply;
     }
 
     /**
-     * Transfers the contract's balance to the owner.
-     * Can only be called by the contract owner.
+     * Set the strategy contract to be used, alongside with the asset to be used by the strategy.
      */
-    function payout() public onlyOwner {
+    function setStrategy(address _strategy) external {
+        require(_strategy != address(0), "Invalid strategy address");
+        strategy = IFondationStrategy(_strategy);
+    }
 
-        (, uint fees, uint yield) = exchangeRateAndYield();
+    /**
+     * Check if the strategy is initialized
+     */
+    function isStrategyInitialized() private view returns (bool) {
+        return address(strategy) != address(0);
+    }
 
-        if (fees > 0) {
-            // Transfer fees to owner
-            bool success = aWBTC.transfer(owner(), fees);
-            require(success, "Failed to transfer fees to owner");
-            paidFees += fees;
+    function accrueYield() external onlyOwner {
+        
+        require(isStrategyInitialized(), "A IFondationStrategy contract must be set");
+        
+        // Request the IFondationStrategy to transfer to the Fondation contract the yield accrued from its deposits
+        uint rawYield = strategy.retrieveYield();
+        
+        if (rawYield > 0) {
 
-            // This yield amount must not be taken into account in future fees calculation
-            accountedYield += yield;
+            uint fees = rawYield * feesRate / 10_000;
+            uint netYield = rawYield - fees;
 
-            emit FeesPaid(fees, block.timestamp);
+            // TODO: swap netYield for wBTC on UniSwap
+
+            uint wBTCBalance = wBTC.balanceOf(address(this)); // TODO: get exact amount from swap result, to reduce gas
+
+            supplyToPool(wBTCBalance);
         }
     }
 
-    function getTotalFees() public view returns (uint) {
-        return paidFees;
+    function totalStaked() external view returns (uint) {
+        return aWBTC.scaledBalanceOf(address(this));
     }
 
+    function supplyToPool(uint _wBTCAmount) private {
+        // Approve Pool to spend on behalf of Fondation
+        bool approved = wBTC.approve(address(aavePool), _wBTCAmount);
+        require(approved, "wBTC approval failed");
 
-    /**
-     * Stores the ratio of yield compared to the totalStaked. Expressed in 0.000001 of %.
-     * @param yield The yield value used to compute the ratio.
-     * @return The computed yield ratio.
-     */
-    function computeYieldRatio(uint yield) internal view returns (uint) {
-        return (yield * 100_000_000) / (totalStaked + yield);
+        // Supply wBTC to Aave Pool
+        aavePool.supply(
+            address(wBTC),
+            _wBTCAmount,
+            address(this),
+            0
+        );
     }
+
+    function depositToStrategy(uint _strategyAssetAmount) private {
+        // Approve IFondationStrategy to spend on behalf of Fondation
+        bool approved = IERC20(strategy.getAsset()).approve(address(strategy), _strategyAssetAmount);
+        require(approved, "IFondationStrategy asset approval failed");
+        
+        // Deposit strategy asset to IFondationStrategy
+        strategy.deposit(_strategyAssetAmount);
+    }
+
+    function checkMaximumPossibleUnstake() external view returns (uint) {
+
+    }
+
 }
