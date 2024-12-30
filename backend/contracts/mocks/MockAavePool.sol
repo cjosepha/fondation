@@ -14,16 +14,26 @@ contract MockAavePool is IPool {
     address public suppliedOnBehalfOf;
     uint16 public suppliedReferralCode;
 
+    address public borrowedAsset;
+    uint256 public borrowedAmount;
+    uint256 public borrowedInterestrateMode;
+    uint16 public borrowedReferralCode;
+    address public borrowedOnBehalfOf;
+
+
+
     address public withdrawnAsset;
     address public withdrawnTo;
     uint256 public withdrawnAmount;
 
     IAToken internal aWBTC;
     MockERC20 internal wBTC;
+    MockERC20 internal USDC;
 
-    constructor(IAToken _aWBTC, MockERC20 _wBTC) {
+    constructor(IAToken _aWBTC, MockERC20 _wBTC, MockERC20 _USDC) {
         aWBTC = _aWBTC;
         wBTC = _wBTC;
+        USDC = _USDC;
     }    
     
     function mintUnbacked(
@@ -45,7 +55,7 @@ contract MockAavePool is IPool {
         address onBehalfOf,
         uint16 referralCode
     ) external override {
-        require(asset == address(wBTC), "MockAavePool: asset should be wBTC");
+        require(asset == address(wBTC), "MockAavePool: supplied asset should be wBTC");
         suppliedAsset = asset;
         suppliedAmount = amount;
         suppliedOnBehalfOf = onBehalfOf;
@@ -70,7 +80,7 @@ contract MockAavePool is IPool {
         uint256 amount,
         address to
     ) external override returns (uint256) {
-        require(asset == address(wBTC), "MockAavePool: asset should be wBTC");
+        require(asset == address(wBTC), "MockAavePool: withdrawn asset should be wBTC");
         withdrawnAsset = asset;
         withdrawnAmount = amount;
         withdrawnTo = to;
@@ -85,7 +95,15 @@ contract MockAavePool is IPool {
         uint256 interestRateMode,
         uint16 referralCode,
         address onBehalfOf
-    ) external override {}
+    ) external override {
+        require(asset == address(USDC), "MockAavePool: borrowed asset should be USDC");
+        borrowedAsset = asset;
+        borrowedAmount = amount;
+        borrowedInterestrateMode = interestRateMode;
+        borrowedReferralCode = referralCode;
+        borrowedOnBehalfOf = onBehalfOf;
+        USDC.transfer(msg.sender, amount);
+    }
 
     function repay(
         address asset,

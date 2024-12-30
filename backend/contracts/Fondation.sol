@@ -15,12 +15,14 @@ import {IFondationStrategy} from "./IFondationStrategy.sol";
  */
 contract Fondation is Ownable {
 
-    IERC20 private wBTC;
-    IAToken private aWBTC;
-    IStBTC private stBTC;
+    IERC20 private wBTC; // 8 decimals
+    IAToken private aWBTC; // 8 decimals
+    IStBTC private stBTC; // 18 decimals
 
     IPool private aavePool;
     IFondationStrategy private strategy;
+
+    uint256 private minimumHealthFactor = 2;
 
     uint public feesRate;
 
@@ -33,6 +35,7 @@ contract Fondation is Ownable {
     event Staked(uint amount, uint when); // Amount of wBTC that has been staked.
     event Unstaked(uint amount, uint when); // Amount of staked wBTC that has been unstaked.
     event FeesPaid(uint amount, uint when); // Amount of fees that has been paid to the owner of the contract.
+    event YieldAccrued(uint amount, uint when); // Amount of yield that has been accrued to the contract.
 
     /**
      * @dev Constructor that sets the fees rate for the contract.
@@ -50,8 +53,12 @@ contract Fondation is Ownable {
         stBTC = _stBTC;
         aavePool = _aavePool;
     }
+
+    ///////////////////////////
+    // User Facing Interface // 
+    ///////////////////////////
     
-    function stake(uint _amount) public {
+    function stake(uint _amount) external {
         
         require(_amount > 0, "You must specify an amount greater than 0");
 
@@ -64,42 +71,58 @@ contract Fondation is Ownable {
 
         if (isStrategyInitialized()) {
 
-            // TODO: borrow strategy asset from Aave Pool
+            // Borrow the maximum possible amount of strategy asset
+            aavePool.borrow(
+                strategy.getAsset(),
+                getMaximumPossibleBorrow(),
+                2,
+                0,
+                address(this)
+            );
 
-            uint strategyAssetBalance = IERC20(strategy.getAsset()).balanceOf(address(this)); // TODO: get exact amount from borrow result, to reduce gas
+            // Retrieve strategy asset balance of Fondation contract
+            uint strategyAssetBalance = getStrategyAsset().balanceOf(address(this));
 
-            // Deposit strategy asset to the IFondationStrategy contract
-            depositToStrategy(strategyAssetBalance);
+            if (strategyAssetBalance > 0) {
+                // Deposit strategy asset to the IFondationStrategy contract
+                depositToStrategy(strategyAssetBalance);
+            }
         }
 
         // Mint stBTC to user
-        uint stBTCAmount = _amount * 100_000_000 / rate;
+        uint stBTCAmount = _amount * 1e19 / rate;
         stBTC.mint(msg.sender, stBTCAmount);
 
         emit Staked(_amount, block.timestamp);
     }
 
-    function unstake(uint _amount) public {
+    function unstake(uint _amount) external {
         
         require(isStrategyInitialized(), "A IFondationStrategy contract must be set");
         require(_amount > 0, "You must specify an amount greater than 0");
 
-        uint rate = exchangeRate();
-        uint wBTCAmount = _amount * rate / 100_000_000;
-
         // Burn stBTC from user
-        // This will revert if the user doesn't have enough stBTC
+        // This is an early check to revert the transaction if the user doesn't have enough stBTC
         stBTC.burn(msg.sender, _amount);
 
-        // Withdraw wBTC from the IFondationStrategy contract and send it to the caller
-        strategy.withdraw(wBTCAmount);
+        uint rate = exchangeRate();
+        uint wBTCAmount = _amount * rate / 1e19;
+        
+        require(wBTCAmount <= getMaximumPossibleWithdraw(), "Unstake amount exceeds maximum possible withdraw"); // TODO: Remove this requirement after implementing delayed unstake
+
+        // Withdraw wBTC from Aave Pool
+        aavePool.withdraw(
+            address(wBTC),
+            wBTCAmount,
+            msg.sender
+        );
 
         emit Unstaked(wBTCAmount, block.timestamp);
     }
 
     /**
-     * @dev Returns the current exchange rate.
-     * @return The exchange rate as an unsigned integer expressed in 0.00000001 of %.
+     * Returns the current exchange rate.
+     * @return The exchange rate as an unsigned integer expressed on 9 decimals.
      */
     function exchangeRate() public view returns (uint) {
 
@@ -108,25 +131,30 @@ contract Fondation is Ownable {
 
         if (stBTCSupply == 0) {
             // The exchange rate should be 1.0
-            return 100_000_000;
+            return 1e9;
         }
 
-        return aWBTCBalance * 100_000_000 / stBTCSupply;
+        return aWBTCBalance * 1e19 / stBTCSupply; // = 10^( (18-8) + 9 ) = 10^(10+9) = 10^19
     }
+
+    function checkMaximumPossibleUnstake() external view returns (uint) {
+
+    }
+
+    function totalStaked() external view returns (uint) {
+        return aWBTC.scaledBalanceOf(address(this));
+    }
+
+    /////////////////////////////
+    // Contract Administration //
+    /////////////////////////////
 
     /**
      * Set the strategy contract to be used, alongside with the asset to be used by the strategy.
      */
-    function setStrategy(address _strategy) external {
-        require(_strategy != address(0), "Invalid strategy address");
-        strategy = IFondationStrategy(_strategy);
-    }
-
-    /**
-     * Check if the strategy is initialized
-     */
-    function isStrategyInitialized() private view returns (bool) {
-        return address(strategy) != address(0);
+    function setStrategy(IFondationStrategy _strategy) external onlyOwner {
+        require(address(_strategy) != address(0), "Invalid strategy address");
+        strategy = _strategy;
     }
 
     function accrueYield() external onlyOwner {
@@ -149,8 +177,19 @@ contract Fondation is Ownable {
         }
     }
 
-    function totalStaked() external view returns (uint) {
-        return aWBTC.scaledBalanceOf(address(this));
+    function setMinimumHealthFactor(uint256 _minimumHealthFactor) external onlyOwner {
+        minimumHealthFactor = _minimumHealthFactor;
+    }
+
+    /////////////////////// 
+    // Private utilities //
+    ///////////////////////
+
+    /**
+     * Check if the strategy is initialized
+     */
+    function isStrategyInitialized() private view returns (bool) {
+        return address(strategy) != address(0);
     }
 
     function supplyToPool(uint _wBTCAmount) private {
@@ -169,15 +208,23 @@ contract Fondation is Ownable {
 
     function depositToStrategy(uint _strategyAssetAmount) private {
         // Approve IFondationStrategy to spend on behalf of Fondation
-        bool approved = IERC20(strategy.getAsset()).approve(address(strategy), _strategyAssetAmount);
+        bool approved = getStrategyAsset().approve(address(strategy), _strategyAssetAmount);
         require(approved, "IFondationStrategy asset approval failed");
         
         // Deposit strategy asset to IFondationStrategy
         strategy.deposit(_strategyAssetAmount);
     }
 
-    function checkMaximumPossibleUnstake() external view returns (uint) {
+    function getStrategyAsset() private view returns (IERC20) {
+        return IERC20(strategy.getAsset());
+    }
 
+    function getMaximumPossibleWithdraw() private view returns (uint256) {
+
+    }
+
+    function getMaximumPossibleBorrow() private view returns (uint256) {
+        
     }
 
 }

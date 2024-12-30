@@ -12,9 +12,7 @@ interface IStBTC is IERC20 {
 
 contract stBTC is ERC20, Ownable {
     
-    constructor() ERC20("Fondation Staked BTC", "stBTC") {
-        _setupDecimals(8);
-    }
+    constructor() ERC20("Fondation Staked BTC", "stBTC") {}
 
     function mint(address _to, uint256 _amount) external onlyOwner {
         _mint(_to, _amount);
