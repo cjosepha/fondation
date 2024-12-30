@@ -13,8 +13,21 @@ import {IERC20} from "@aave/core-v3/contracts/dependencies/openzeppelin/contract
 contract FakeStrategy is BaseStrategy {
 
     uint256 private yield;
+
+    uint256 public depositedAmount; // For testing purposes
+    uint256 public withdrawnAmount; // For testing purposes
     
-    constructor(Fondation _fondation, address _asset) BaseStrategy(_fondation, _asset) {}
+    constructor(Fondation _fondation, address _asset, address _priceFeed) BaseStrategy(_fondation, _asset, _priceFeed) {}
+
+    function deposit(uint256 _amount) public override onlyFondation {
+        super.deposit(_amount);
+        depositedAmount = _amount;
+    }
+
+    function withdraw(uint256 _amount) public override onlyFondation {
+        super.withdraw(_amount);
+        withdrawnAmount = _amount;
+    }
 
     function retrieveYield() external override onlyFondation returns (uint256) {
         uint256 yieldToSend = yield;
@@ -27,7 +40,7 @@ contract FakeStrategy is BaseStrategy {
         return yieldToSend;
     }
 
-    function addYFakeYield(uint256 _amount) external onlyOwner {
+    function addFakeYield(uint256 _amount) external onlyOwner {
         require(_amount > 0, "You must specify an amount greater than 0");
         // Transfer fake yield from caller to FakeStrategy
         bool result = IERC20(asset).transferFrom(msg.sender, address(this), _amount);

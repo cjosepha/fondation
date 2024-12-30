@@ -6,7 +6,9 @@ import {IERC20} from "@aave/core-v3/contracts/dependencies/openzeppelin/contract
 import {IStBTC} from "./stBTC.sol";
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 import {IAToken} from "@aave/core-v3/contracts/interfaces/IAToken.sol";
+import {IAaveOracle} from "@aave/core-v3/contracts/interfaces/IAaveOracle.sol";
 import {IFondationStrategy} from "./IFondationStrategy.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 /**
  * @title Fondation
@@ -20,9 +22,10 @@ contract Fondation is Ownable {
     IStBTC private stBTC; // 18 decimals
 
     IPool private aavePool;
+    IAaveOracle private aaveOracle;
     IFondationStrategy private strategy;
 
-    uint256 private minimumHealthFactor = 2;
+    uint256 private minimumHealthFactor = 2 * 1e18; // 2.0
 
     uint public feesRate;
 
@@ -41,7 +44,7 @@ contract Fondation is Ownable {
      * @dev Constructor that sets the fees rate for the contract.
      * @param _feesRate The initial fees rate to be set, expressed in 0.01 of %.
      */
-    constructor(uint _feesRate, IERC20 _wBTC, IAToken _aWBTC, IStBTC _stBTC, IPool _aavePool) {
+    constructor(uint _feesRate, IERC20 _wBTC, IAToken _aWBTC, IStBTC _stBTC, IPool _aavePool, IAaveOracle _aaveOracle) {
         require(
             _feesRate > 0 && _feesRate <= 10000,
             "fees rate is expressed in 0.01 of % and should be between 0 and 10000"
@@ -52,6 +55,7 @@ contract Fondation is Ownable {
         aWBTC = _aWBTC;
         stBTC = _stBTC;
         aavePool = _aavePool;
+        aaveOracle = _aaveOracle;
     }
 
     ///////////////////////////
@@ -71,14 +75,19 @@ contract Fondation is Ownable {
 
         if (isStrategyInitialized()) {
 
-            // Borrow the maximum possible amount of strategy asset
-            aavePool.borrow(
-                strategy.getAsset(),
-                getMaximumPossibleBorrow(),
-                2,
-                0,
-                address(this)
-            );
+            // Get the maximum possible amount of strategy asset that can be borrowed
+            uint maximumBorrow = getMaximumPossibleBorrow();
+
+            if (maximumBorrow > 0) {
+                // Borrow the maximum possible amount of strategy asset
+                aavePool.borrow(
+                    strategy.getAsset(),
+                    maximumBorrow,
+                    2,
+                    0,
+                    address(this)
+                );
+            }
 
             // Retrieve strategy asset balance of Fondation contract
             uint strategyAssetBalance = getStrategyAsset().balanceOf(address(this));
@@ -101,12 +110,15 @@ contract Fondation is Ownable {
         require(isStrategyInitialized(), "A IFondationStrategy contract must be set");
         require(_amount > 0, "You must specify an amount greater than 0");
 
+        // Retrieving the exchange rate, before buring the stBTC
+        uint rate = exchangeRate();
+
         // Burn stBTC from user
-        // This is an early check to revert the transaction if the user doesn't have enough stBTC
+        // This will revert the transaction if the user doesn't have enough stBTC
         stBTC.burn(msg.sender, _amount);
 
-        uint rate = exchangeRate();
-        uint wBTCAmount = _amount * rate / 1e19;
+        // Calculating the amount of wBTC to be withdrawn
+        uint wBTCAmount = (_amount * rate) / 1e19;
         
         require(wBTCAmount <= getMaximumPossibleWithdraw(), "Unstake amount exceeds maximum possible withdraw"); // TODO: Remove this requirement after implementing delayed unstake
 
@@ -219,12 +231,94 @@ contract Fondation is Ownable {
         return IERC20(strategy.getAsset());
     }
 
-    function getMaximumPossibleWithdraw() private view returns (uint256) {
+    function getStrategyPriceFeed() private view returns (AggregatorV3Interface) {
+        return AggregatorV3Interface(strategy.getPriceFeed());
+    }
 
+    function getMaximumPossibleWithdraw() public view returns (uint256) {
+
+        // Fetch user account data from Aave
+        (
+            uint256 totalCollateralBase,
+            uint256 totalDebtBase,
+            , // availableBorrowsBase (ignored)
+            uint256 currentLiquidationThreshold,
+            , // ltv (ignored)
+            uint256 healthFactor
+        ) = aavePool.getUserAccountData(address(this));
+
+        // Ensure the health factor is not already below the minimum threshold
+        require(healthFactor > minimumHealthFactor, "Health factor is already below safe levels");
+
+        // Get the current wBTC underlying asset balance (aWBTC) of the Fondation contract
+        uint256 aWBTCBalance = aWBTC.balanceOf(address(this));
+
+        // If there is no debt, the entire collateral can be withdrawn
+        if (totalDebtBase == 0) {
+            return aWBTCBalance;
+        }
+
+        // Calculate the maximum collateral that can be withdrawn while maintaining the target health factor
+        uint256 maxWithdrawCollateralBase = totalCollateralBase - ((totalDebtBase * minimumHealthFactor) / 1e18); // TODO: consider currentLiquidationThreshold in the calculation
+
+        // Get the price of aWBTC in USD
+        uint256 priceOfaWBTC = aaveOracle.getAssetPrice(address(aWBTC));
+
+        // Convert collateral amount back to wBTC units
+        uint256 maxWithdrawAmountInSatoshi = (maxWithdrawCollateralBase * 1e8) / priceOfaWBTC;
+
+        // We can't withdraw more than the effective balance of the contract
+        if (maxWithdrawAmountInSatoshi > aWBTCBalance) {
+            maxWithdrawAmountInSatoshi = aWBTCBalance;
+        }
+
+        return maxWithdrawAmountInSatoshi;
     }
 
     function getMaximumPossibleBorrow() private view returns (uint256) {
         
+        // Fetch user account data from Aave
+        (
+            uint256 totalCollateralBase,
+            uint256 totalDebtBase,
+            uint256 availableBorrowsBase,
+            uint256 currentLiquidationThreshold,
+            , // ltv (ignored)
+            uint256 healthFactor
+        ) = aavePool.getUserAccountData(address(this));
+
+        // Ensure the health factor is not already below the minimum threshold
+        require(healthFactor > minimumHealthFactor, "Health factor is already below safe levels");
+
+        // If there is no collateral, nothing can be borrowed
+        if (totalCollateralBase == 0) {
+            return 0;
+        }
+
+        // We want final HF >= minimumHealthFactor
+        //    In this simplified approach: HF = totalCollateral / totalDebt
+        //    => totalDebt <= totalCollateral / minHF
+        //    => additionalBorrow = (totalCollateral / minHF) - totalDebt
+        //
+        //    Because totalCollateralBase, totalDebtBase, and minimumHealthFactor
+        //    are all in 1e18 scale, we must do careful integer math:
+        //
+        //    maxDebt = (totalCollateralBase * 1e18) / minimumHealthFactor
+        //    additionalBorrow = maxDebt - totalDebtBase
+
+        uint256 maxDebtAllowed = (totalCollateralBase * 1e18) / minimumHealthFactor;
+        if (maxDebtAllowed <= totalDebtBase) {
+            // No room left to borrow while keeping HF >= minimumHealthFactor
+            return 0;
+        }
+        uint256 additionalBorrow = maxDebtAllowed - totalDebtBase;
+
+        // Aave also enforces availableBorrowsBase, so we can't exceed that
+        if (additionalBorrow > availableBorrowsBase) {
+            additionalBorrow = availableBorrowsBase;
+        }
+
+        return additionalBorrow;
     }
 
 }

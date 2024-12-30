@@ -15,18 +15,20 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
     
     Fondation private fondation;
     address internal asset;
+    address internal priceFeed;
 
     modifier onlyFondation() {
         require(msg.sender == address(fondation), "Caller must be the Fondation contract");
         _;
     }
 
-    constructor(Fondation _fondation, address _asset) {
+    constructor(Fondation _fondation, address _asset, address _priceFeed) {
         fondation = _fondation;
         asset = _asset;
+        priceFeed = _priceFeed;
     }
 
-    function deposit(uint256 _amount) external override onlyFondation {
+    function deposit(uint256 _amount) public virtual override onlyFondation {
         
         require(_amount > 0, "You must specify an amount greater than 0");
 
@@ -36,7 +38,7 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
         require(result, "deposit failed");
     }
 
-    function withdraw(uint256 _amount) external override onlyFondation {
+    function withdraw(uint256 _amount) public virtual override onlyFondation {
 
         require(_amount > 0, "You must specify an amount greater than 0");
 
@@ -49,5 +51,9 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
     function getAsset() external view override returns (address) {
         return asset;
     }   
+
+    function getPriceFeed() external view override returns (address) {
+        return priceFeed;
+    }
 
 }

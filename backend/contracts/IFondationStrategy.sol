@@ -4,9 +4,16 @@ pragma solidity ^0.8.28;
 interface IFondationStrategy {
 
     /**
-     * Return to the caller the asset which is accepted for deposit, withdraw and yield retrieving
+     * Returns to the caller the asset which is accepted for deposit, withdraw and yield retrieving
+     * @return An IERC20 token address
      */
     function getAsset() external view returns (address);
+
+    /**
+     * Returns to the caller the oracle contract which provides the BTC price against the asset price
+     * @return An AggregatorV3Interface contract address
+     */
+    function getPriceFeed() external view returns (address);
 
     /**
      * Allow to deposit strategy asset

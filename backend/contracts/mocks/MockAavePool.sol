@@ -20,8 +20,6 @@ contract MockAavePool is IPool {
     uint16 public borrowedReferralCode;
     address public borrowedOnBehalfOf;
 
-
-
     address public withdrawnAsset;
     address public withdrawnTo;
     uint256 public withdrawnAmount;
@@ -29,11 +27,13 @@ contract MockAavePool is IPool {
     IAToken internal aWBTC;
     MockERC20 internal wBTC;
     MockERC20 internal USDC;
+    uint256 internal btcPrice;
 
-    constructor(IAToken _aWBTC, MockERC20 _wBTC, MockERC20 _USDC) {
+    constructor(IAToken _aWBTC, MockERC20 _wBTC, MockERC20 _USDC, uint256 _btcPrice) {
         aWBTC = _aWBTC;
         wBTC = _wBTC;
         USDC = _USDC;
+        btcPrice = _btcPrice;
     }    
     
     function mintUnbacked(
@@ -184,7 +184,16 @@ contract MockAavePool is IPool {
             uint256 ltv,
             uint256 healthFactor
         )
-    {}
+    {
+        return (
+            (wBTC.balanceOf(address(this)) * btcPrice) / 1e8,
+            0,
+            USDC.balanceOf(address(this)),
+            0,
+            0,
+            3 * 1e18
+        );
+    }
 
     function initReserve(
         address asset,

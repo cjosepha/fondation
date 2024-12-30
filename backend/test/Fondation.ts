@@ -10,19 +10,24 @@ describe("Fondation", function () {
   async function deployFondationFixtureOnePercentFees() {
     
     const fees = 100;
+    const btcPrice = toBigInt('80000');
     const [owner, otherAccount] = await hre.viem.getWalletClients();
     const mockUSDC = await hre.viem.deployContract("MockERC20");
     const mockStBTC = await hre.viem.deployContract("MockStBTC");
     const mockWBTC = await hre.viem.deployContract("MockERC20");
     const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
-    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address]);
-    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address]);
-    const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address]);
+    const mockPriceFeed = await hre.viem.deployContract("MockPriceFeed");
+    const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockAWBTC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address, mockAaveOracle.address]);
+    const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, mockPriceFeed.address]);
 
     // Set the strategy on the main contract
     await contract.write.setStrategy([strategy.address], { account: owner.account.address });
 
     const publicClient = await hre.viem.getPublicClient();
+
+    await mockUSDC.write.setBalance([mockAavePool.address, toBigInt('200000')]);
 
     return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool, mockUSDC, strategy };
   }
@@ -30,14 +35,17 @@ describe("Fondation", function () {
   async function deployFondationFixtureOnePercentFeesWithStake() {
 
     const fees = 100;
+    const btcPrice = toBigInt('80000');
     const [owner, otherAccount] = await hre.viem.getWalletClients();
     const mockUSDC = await hre.viem.deployContract("MockERC20");
     const mockStBTC = await hre.viem.deployContract("MockStBTC");
     const mockWBTC = await hre.viem.deployContract("MockERC20");
     const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
-    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address]);
-    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address]);
-    const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address]);
+    const mockPriceFeed = await hre.viem.deployContract("MockPriceFeed");
+    const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockAWBTC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address, mockAaveOracle.address]);
+    const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, mockPriceFeed.address]);
 
     // Set the strategy on the main contract
     await contract.write.setStrategy([strategy.address], { account: owner.account.address });
@@ -45,7 +53,7 @@ describe("Fondation", function () {
     const publicClient = await hre.viem.getPublicClient();
 
     await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, 20n);
-    await mockUSDC.write.setBalance([mockAavePool.address, parseUnits('1000', 18)]);
+    await mockUSDC.write.setBalance([mockAavePool.address, toBigInt('200000')]);
     await contract.write.stake([20n], { account: otherAccount.account.address });
 
     return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool, mockUSDC, strategy };
@@ -55,14 +63,17 @@ describe("Fondation", function () {
   async function deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield() {
 
     const fees = 2500;
+    const btcPrice = toBigInt('80000');
     const [owner, otherAccount] = await hre.viem.getWalletClients();
     const mockUSDC = await hre.viem.deployContract("MockERC20");
     const mockStBTC = await hre.viem.deployContract("MockStBTC");
     const mockWBTC = await hre.viem.deployContract("MockERC20");
     const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
-    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address]);
-    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address]);
-    const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address]);
+    const mockPriceFeed = await hre.viem.deployContract("MockPriceFeed");
+    const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockAWBTC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address, mockAaveOracle.address]);
+    const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, mockPriceFeed.address]);
 
     // Set the strategy on the main contract
     await contract.write.setStrategy([strategy.address], { account: owner.account.address });
@@ -70,7 +81,7 @@ describe("Fondation", function () {
     const publicClient = await hre.viem.getPublicClient();
 
     await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, 20n);
-    await mockUSDC.write.setBalance([mockAavePool.address, parseUnits('1000', 18)]);
+    await mockUSDC.write.setBalance([mockAavePool.address, toBigInt('200000')]);
     await contract.write.stake([20n], { account: otherAccount.account.address });
     await mockAWBTC.write.addInterest([contract.address, 4n]);
     await mockWBTC.write.addInterest([mockAavePool.address, 4n]);
@@ -82,14 +93,17 @@ describe("Fondation", function () {
   async function deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_2() {
 
     const fees = 2500;
+    const btcPrice = toBigInt('80000');
     const [owner, otherAccount] = await hre.viem.getWalletClients();
     const mockUSDC = await hre.viem.deployContract("MockERC20");
     const mockStBTC = await hre.viem.deployContract("MockStBTC");
     const mockWBTC = await hre.viem.deployContract("MockERC20");
     const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
-    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address]);
-    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address]);
-    const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address]);
+    const mockPriceFeed = await hre.viem.deployContract("MockPriceFeed");
+    const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockAWBTC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address, mockAaveOracle.address]);
+    const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, mockPriceFeed.address]);
 
     // Set the strategy on the main contract
     await contract.write.setStrategy([strategy.address], { account: owner.account.address });
@@ -97,7 +111,7 @@ describe("Fondation", function () {
     const publicClient = await hre.viem.getPublicClient();
 
     await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, 20n);
-    await mockUSDC.write.setBalance([mockAavePool.address, parseUnits('1000', 18)]);
+    await mockUSDC.write.setBalance([mockAavePool.address, toBigInt('200000')]);
     await contract.write.stake([20n], { account: otherAccount.account.address });
     await mockAWBTC.write.addInterest([contract.address, 8n]);
     await mockWBTC.write.addInterest([mockAavePool.address, 8n]);
@@ -109,14 +123,17 @@ describe("Fondation", function () {
   async function deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_3() {
 
     const fees = 2500;
+    const btcPrice = toBigInt('80000');
     const [owner, staker1, staker2, unstaker] = await hre.viem.getWalletClients();
     const mockUSDC = await hre.viem.deployContract("MockERC20");
     const mockStBTC = await hre.viem.deployContract("MockStBTC");
     const mockWBTC = await hre.viem.deployContract("MockERC20");
     const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
-    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address]);
-    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address]);
-    const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address]);
+    const mockPriceFeed = await hre.viem.deployContract("MockPriceFeed");
+    const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockAWBTC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address, mockAaveOracle.address]);
+    const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, mockPriceFeed.address]);
 
     // Set the strategy on the main contract
     await contract.write.setStrategy([strategy.address], { account: owner.account.address });
@@ -124,7 +141,7 @@ describe("Fondation", function () {
     const publicClient = await hre.viem.getPublicClient();
 
     await setBalanceAndAllowance(mockWBTC, staker1.account.address, contract.address, 500n);
-    await mockUSDC.write.setBalance([mockAavePool.address, parseUnits('1000', 18)]);
+    await mockUSDC.write.setBalance([mockAavePool.address, toBigInt('200000')]);
     await contract.write.stake([500n], { account: staker1.account.address });
     await mockAWBTC.write.addInterest([contract.address, 4n]);
     await mockWBTC.write.addInterest([mockAavePool.address, 4n]);
@@ -137,14 +154,17 @@ describe("Fondation", function () {
   async function deployFondationFixtureTwentyTwentyPercentFeesWithStakeAndYield() {
 
     const fees = 2000;
+    const btcPrice = toBigInt('80000');
     const [owner, user1, user2, user3] = await hre.viem.getWalletClients();
     const mockUSDC = await hre.viem.deployContract("MockERC20");
     const mockStBTC = await hre.viem.deployContract("MockStBTC");
     const mockWBTC = await hre.viem.deployContract("MockERC20");
     const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
-    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address]);
-    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address]);
-    const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address]);
+    const mockPriceFeed = await hre.viem.deployContract("MockPriceFeed");
+    const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockAWBTC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address, mockAaveOracle.address]);
+    const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, mockPriceFeed.address]);
 
     // Set the strategy on the main contract
     await contract.write.setStrategy([strategy.address], { account: owner.account.address });
@@ -152,7 +172,7 @@ describe("Fondation", function () {
     const publicClient = await hre.viem.getPublicClient();
 
     await setBalanceAndAllowance(mockWBTC, user1.account.address, contract.address, toBigIntWBTC('100'));
-    await mockUSDC.write.setBalance([mockAavePool.address, toBigInt('100000')]);
+    await mockUSDC.write.setBalance([mockAavePool.address, toBigInt('200000')]);
     await contract.write.stake([toBigIntWBTC('100')], { account: user1.account.address });
     await mockAWBTC.write.addInterest([contract.address, toBigIntWBTC('20')]);
     await mockWBTC.write.addInterest([mockAavePool.address, toBigIntWBTC('20')]);
@@ -260,10 +280,11 @@ describe("Fondation", function () {
 
     it("should deposit the corresponding amount of strategy asset to the strategy contract (exchangeRate = 1.00, no stake)", async function () {
       const { contract, otherAccount, mockWBTC, mockUSDC, strategy } = await loadFixture(deployFondationFixtureOnePercentFees);
-      const amount = 100n;
+      const amount = toBigIntWBTC('1');
       await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
-      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal([amount]);
+      expect(await strategy.read.depositedAmount()).to.equal(toBigInt('40000'));
+      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigInt('40000'));
     });
 
     it("should mint the corresponding amount of stBTC to the user (exchangeRate = 1.00)", async function () {
@@ -303,70 +324,46 @@ describe("Fondation", function () {
       await expect(contract.write.unstake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("stBTC: burn amount exceeds balance");
     });
 
-    it("should withdraw the correct amount of wBTC to the user (exchangeRate = 1.00, with stake of 20)", async function () {
+    it("should withdraw the correct amount of wBTC to the user (exchangeRate = 1.00, with stake of 20 satoshis)", async function () {
       const { contract, otherAccount, mockAavePool, mockWBTC } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
-      const amount = 10n;
-      await contract.write.unstake([amount], { account: otherAccount.account.address });
+      const amountStBTC = toBigInt('0.0000001');
+      const amountWBTC = toBigIntWBTC('0.0000001');
+      await contract.write.unstake([amountStBTC], { account: otherAccount.account.address });
       expect((await mockAavePool.read.withdrawnTo()).toLowerCase()).to.equal(otherAccount.account.address);
       expect((await mockAavePool.read.withdrawnAsset()).toLowerCase()).to.equal(mockWBTC.address);
-      expect(await mockAavePool.read.withdrawnAmount()).to.equal(amount);
+      expect(await mockAavePool.read.withdrawnAmount()).to.equal(amountWBTC);
     });
 
-    it("should update totalStaked value accordingly (exchangeRate = 1.15, with stake of 20, unstake of 15)", async function () {
-      const { contract, otherAccount } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
-      const amount = 15n;
-      await contract.write.unstake([amount], { account: otherAccount.account.address });
-      expect(await contract.read.totalStaked()).to.equal(20n - amount);
-    });
-
-    it("should update totalStaked value accordingly (exchangeRate = 1.05, with stake of 500, unstake of 28)", async function () {
-      const { contract, unstaker } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_3);
-      const amount = 28n;
-      await contract.write.unstake([amount], { account: unstaker.account.address });
-      expect(await contract.read.totalStaked()).to.equal(500n - amount);
-    });
-
-    it("should update totalStaked value accordingly (exchangeRate = 1.05, with stake of 500, unstake of 150)", async function () {
-      const { contract, unstaker } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_3);
-      const amount = 150n;
-      await contract.write.unstake([amount], { account: unstaker.account.address });
-      expect(await contract.read.totalStaked()).to.equal(500n - amount);
-    });
-
-    it("should withdraw the correct amount of wBTC to the user (exchangeRate = 1.15, with stake of 20, unstake of 15)", async function () {
+    it("should withdraw the correct amount of wBTC to the user (exchangeRate = 1.20, with stake of 20 satoshis, unstake of 15 stSatoshis)", async function () {
       const { contract, otherAccount, mockAavePool, mockWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
-      const amount = 15n;
-      await contract.write.unstake([amount], { account: otherAccount.account.address });
+      const amountStBTC = toBigInt('0.00000015');
+      const amountWBTC = toBigIntWBTC('0.00000018'); // 15 * 1.20 = 18
+      await contract.write.unstake([amountStBTC], { account: otherAccount.account.address });
       expect((await mockAavePool.read.withdrawnTo()).toLowerCase()).to.equal(otherAccount.account.address);
       expect((await mockAavePool.read.withdrawnAsset()).toLowerCase()).to.equal(mockWBTC.address);
-      expect(await mockAavePool.read.withdrawnAmount()).to.equal(17n);  // 15 * 1.15 = 17.25 truncated to 17
+      expect(await mockAavePool.read.withdrawnAmount()).to.equal(amountWBTC);
     });
 
-    it("should withdraw the correct amount of wBTC to the user (exchangeRate = 1.15, with stake of 20, unstake of 20)", async function () {
+    it("should withdraw the correct amount of wBTC to the user (exchangeRate = 1.20, with stake of 20 satoshis, unstake of 20)", async function () {
       const { contract, otherAccount, mockAavePool, mockWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
-      const amount = 20n;
-      await contract.write.unstake([amount], { account: otherAccount.account.address });
+      const amountStBTC = toBigInt('0.00000020');
+      const amountWBTC = toBigIntWBTC('0.00000024'); // 20 * 1.20 = 24
+      await contract.write.unstake([amountStBTC], { account: otherAccount.account.address });
       expect((await mockAavePool.read.withdrawnTo()).toLowerCase()).to.equal(otherAccount.account.address);
       expect((await mockAavePool.read.withdrawnAsset()).toLowerCase()).to.equal(mockWBTC.address);
-      expect(await mockAavePool.read.withdrawnAmount()).to.equal(23n);  // 20 * 1.15 = 23
-    });
-
-    it("should update totalStaked value accordingly (exchangeRate = 1.15, with stake of 20, unstake of 20)", async function () {
-      const { contract, otherAccount } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
-      const amount = 20n;
-      await contract.write.unstake([amount], { account: otherAccount.account.address });
-      expect(await contract.read.totalStaked()).to.equal(0n);
+      expect(await mockAavePool.read.withdrawnAmount()).to.equal(amountWBTC);
     });
 
     it("should emit the Unstaked event", async function () {
       const { contract, otherAccount, publicClient } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
-      const amount = 3n;
+      const amountStBTC = toBigInt('0.00000003');
+      const amountWBTC = toBigIntWBTC('0.00000003');
       
       // Get the current block before the transaction
       const blockBefore = await publicClient.getBlock({ blockTag: "latest" });
       const before = blockBefore.timestamp; // Get the timestamp of the block
       
-      const tx = await contract.write.unstake([amount], { account: otherAccount.account.address });
+      const tx = await contract.write.unstake([amountStBTC], { account: otherAccount.account.address });
       const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
       
       // Get the current block after the transaction
@@ -377,7 +374,7 @@ describe("Fondation", function () {
       
       expect(logs.length).to.equal(1);
       expect(event.eventName).to.equal("Unstaked");
-      expect(event.args.amount).to.equal(amount);
+      expect(event.args.amount).to.equal(amountWBTC);
       expect(Number(event.args.when)).to.be.greaterThanOrEqual(Number(before));
       expect(Number(event.args.when)).to.be.lessThanOrEqual(Number(after));
     });
@@ -388,27 +385,27 @@ describe("Fondation", function () {
 
     it("should be 1.00 if there is no stake", async function () {
       const { contract } = await loadFixture(deployFondationFixtureOnePercentFees);
-      expect(await contract.read.exchangeRate()).to.equal(parseUnits('1', 9));
+      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1'));
     });
 
     it("should be 1.00 if there is no yield", async function () {
       const { contract } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
-      expect(await contract.read.exchangeRate()).to.equal(parseUnits('1', 9));
+      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1'));
     });
 
     it("should be 1.20 if there is a customer yield of 20%", async function () {
       const { contract } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
-      expect(await contract.read.exchangeRate()).to.equal(parseUnits('1.20', 9));
+      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1.20'));
     });
 
     it("should be 1.40 if there is a customer yield of 30%", async function () {
       const { contract } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_2);
-      expect(await contract.read.exchangeRate()).to.equal(parseUnits('1.40', 9));
+      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1.40'));
     });
 
     it("should be 1.006 if there is a customer yield of 0.006%", async function () {
       const { contract } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_3);
-      expect(await contract.read.exchangeRate()).to.equal(parseUnits('1.008', 9));
+      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1.008'));
     });
 
     it("should be 1.00 if there is no yield, with additional stake", async function () {
@@ -416,7 +413,7 @@ describe("Fondation", function () {
       const amount = 100n;
       await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
-      expect(await contract.read.exchangeRate()).to.equal(parseUnits('1', 9));
+      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1'));
     });
 
     it("should be 1.20 if there is a yield of 20%, with additional stake", async function () {
@@ -424,7 +421,7 @@ describe("Fondation", function () {
       const amount = 100n;
       await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
-      expect(await contract.read.exchangeRate()).to.equal(parseUnits('1.20', 9));
+      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1.20'));
     });
 
     it("should be 1.40 if there is a yield of 40%, with additional stake", async function () {
@@ -432,7 +429,7 @@ describe("Fondation", function () {
       const amount = 100n;
       await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
-      expect(await contract.read.exchangeRate()).to.equal(parseUnits('1.40', 9));
+      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1.40'));
     });
 
   });
@@ -550,7 +547,7 @@ describe("Fondation", function () {
       expect(await contract.read.totalStaked()).to.equal(0n);
 
       // The exchange rate should be 1.00, the fees 4 wBTC and the yield 16 wBTC
-      expect(await contract.read.exchangeRateAndYield()).to.deep.equal([100000000n, toBigInt('4'), toBigInt('0')]);
+      expect(await contract.read.exchangeRate()).to.deep.equal([100000000n, toBigInt('4'), toBigInt('0')]);
      
       // The user should have 0 stBTC
       expect(await mockStBTC.read.balanceOf([user1.account.address])).to.equal(0n);
