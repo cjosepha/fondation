@@ -181,11 +181,18 @@ contract Fondation is Ownable {
             uint fees = rawYield * feesRate / 10_000;
             uint netYield = rawYield - fees;
 
+            // Transfer the fees to the owner of the contract
+            getStrategyAsset().transfer(msg.sender, fees);
+
             // TODO: swap netYield for wBTC on UniSwap
 
             uint wBTCBalance = wBTC.balanceOf(address(this)); // TODO: get exact amount from swap result, to reduce gas
 
-            supplyToPool(wBTCBalance);
+            if (wBTCBalance > 0) {
+                supplyToPool(wBTCBalance);
+            }
+
+            emit FeesPaid(fees, block.timestamp);
         }
     }
 

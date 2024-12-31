@@ -31,7 +31,7 @@ contract FakeStrategy is BaseStrategy {
 
     function retrieveYield() external override onlyFondation returns (uint256) {
         uint256 yieldToSend = yield;
-        if (yield > 0) {
+        if (yieldToSend > 0) {
             // Transfer fake yield to caller
             bool result = IERC20(asset).transfer(msg.sender, yieldToSend);
             require(result, "retrieve yield failed");
