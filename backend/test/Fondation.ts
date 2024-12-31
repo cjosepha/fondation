@@ -476,22 +476,43 @@ describe("Fondation unit testing", function () {
       await expect(contract.write.accrueYield({ account: otherAccount.account.address })).to.be.rejectedWith("Ownable: caller is not the owner");
     });
 
-    it("should send the correct amount of yield to the owner (no yield)", async function () {
+    it("should send the correct amount of fees to the owner (no yield)", async function () {
       const { contract, owner, mockUSDC } = await loadFixture(deployFondationFixtureOnePercentFees);
       await contract.write.accrueYield({ account: owner.account.address });
       expect(await mockUSDC.read.balanceOf([owner.account.address])).to.equal(0n);
     });
 
-    it("should send the correct amount of yield to the owner (no yield, 20 staked)", async function () {
+    it("should send the correct amount of fees to the owner (no yield, 20 staked)", async function () {
       const { contract, owner, mockUSDC } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
       await contract.write.accrueYield({ account: owner.account.address });
       expect(await mockUSDC.read.balanceOf([owner.account.address])).to.equal(0n);
     });
 
-    it("should send the correct amount of yield to the owner (with yield)", async function () {
+    it("should send the correct amount of fees to the owner (with yield)", async function () {
       const { contract, owner, mockUSDC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield); // 20 USDC of yield
       await contract.write.accrueYield({ account: owner.account.address });
       expect(await mockUSDC.read.balanceOf([owner.account.address])).to.equal(toBigInt('5'));
+    });
+
+    it("should supply the correct amount of yield to the pool (no yield)", async function () {
+      const { contract, owner, mockAavePool } = await loadFixture(deployFondationFixtureOnePercentFees);
+      await contract.write.accrueYield({ account: owner.account.address });
+      expect(await mockAavePool.read.suppliedAmount()).to.equal(0n);
+    });
+
+    it("should supply the correct amount of yield to the pool (no yield, 20 staked)", async function () {
+      const { contract, owner, mockAavePool } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
+      await contract.write.accrueYield({ account: owner.account.address });
+      expect(await mockAavePool.read.suppliedAmount()).to.equal(20n);
+    });
+
+    it("should supply the correct amount of yield to the pool (with yield)", async function () {
+      const { contract, owner, mockAavePool, mockWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield); // 20 USDC of yield
+      await contract.write.accrueYield({ account: owner.account.address });
+      expect(await mockAavePool.read.suppliedAmount()).to.equal(0n);
+      expect((await mockAavePool.read.suppliedAsset()).toLowerCase()).to.equal(mockWBTC.address);
+      expect((await mockAavePool.read.suppliedOnBehalfOf()).toLowerCase()).to.equal(contract.address);
+      expect(await mockAavePool.read.suppliedReferralCode()).to.equal(0n);
     });
 
     it("should send nothing the second time it's called if yield didn't increase (no change in yield between calls)", async function () {
