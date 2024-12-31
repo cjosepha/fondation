@@ -538,7 +538,7 @@ describe("Fondation unit testing", function () {
       
       const event = decodeEventFromLogs(logs, 0, contract);
       
-      expect(logs.length).to.equal(1);
+      expect(logs.length).to.equal(2);
       expect(event.eventName).to.equal("FeesPaid");
       expect(event.args.amount).to.equal(toBigInt('5'));
       expect(Number(event.args.when)).to.be.greaterThanOrEqual(Number(before));
@@ -546,6 +546,26 @@ describe("Fondation unit testing", function () {
     });
 
     it("should emit the YieldAccrued event", async function () {
+      const { contract, owner, publicClient } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
+      
+      // Get the current block before the transaction
+      const blockBefore = await publicClient.getBlock({ blockTag: "latest" });
+      const before = blockBefore.timestamp; // Get the timestamp of the block
+      
+      const tx = await contract.write.accrueYield({ account: owner.account.address });
+      const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      
+      // Get the current block after the transaction
+      const blockAfter = await publicClient.getBlock({ blockTag: "latest" });
+      const after = blockAfter.timestamp; // Get the timestamp of the block
+      
+      const event = decodeEventFromLogs(logs, 1, contract);
+      
+      expect(logs.length).to.equal(2);
+      expect(event.eventName).to.equal("YieldAccrued");
+      expect(event.args.amount).to.equal(toBigInt('5'));
+      expect(Number(event.args.when)).to.be.greaterThanOrEqual(Number(before));
+      expect(Number(event.args.when)).to.be.lessThanOrEqual(Number(after));
     });
 
   });
