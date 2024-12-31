@@ -5,7 +5,7 @@ import { expect } from "chai";
 import hre from "hardhat";
 import { Address, decodeEventLog, getAddress, Log, parseUnits } from "viem";
 
-describe("Fondation", function () {
+describe("Fondation unit testing", function () {
   
   async function deployFondationFixtureOnePercentFees() {
     
@@ -178,6 +178,41 @@ describe("Fondation", function () {
     await mockWBTC.write.addInterest([mockAavePool.address, toBigIntWBTC('20')]);
 
     return { contract, owner, user1, user2, user3, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool, mockUSDC, strategy };
+
+  }
+
+  async function deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield() {
+
+    const fees = 2500;
+    const btcPrice = toBigInt('80000');
+    const [owner, otherAccount] = await hre.viem.getWalletClients();
+    const mockUSDC = await hre.viem.deployContract("MockERC20");
+    const mockStBTC = await hre.viem.deployContract("MockStBTC");
+    const mockWBTC = await hre.viem.deployContract("MockERC20");
+    const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
+    const mockPriceFeed = await hre.viem.deployContract("MockPriceFeed");
+    const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockAWBTC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockStBTC.address, mockAavePool.address, mockAaveOracle.address]);
+    const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, mockPriceFeed.address]);
+
+    // Set the strategy on the main contract
+    await contract.write.setStrategy([strategy.address], { account: owner.account.address });
+
+    const publicClient = await hre.viem.getPublicClient();
+
+    const amountStaked = toBigIntWBTC('0.05');
+
+    await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amountStaked);
+    await mockUSDC.write.setBalance([mockAavePool.address, toBigInt('200000')]);
+    await contract.write.stake([amountStaked], { account: otherAccount.account.address });
+
+    // Adding the yield to the strategy contract in USDC (strategy asset)
+    const amountYield = toBigInt('20');
+    await setBalanceAndAllowance(mockUSDC, owner.account.address, strategy.address, amountYield);
+    await strategy.write.addFakeYield([amountYield], { account: owner.account.address });
+
+    return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool, mockUSDC, strategy };
 
   }
     
@@ -441,33 +476,33 @@ describe("Fondation", function () {
       await expect(contract.write.accrueYield({ account: otherAccount.account.address })).to.be.rejectedWith("Ownable: caller is not the owner");
     });
 
-    it("should send the correct amount of aWBTC to the owner (no yield)", async function () {
-      const { contract, owner, mockAWBTC } = await loadFixture(deployFondationFixtureOnePercentFees);
+    it("should send the correct amount of yield to the owner (no yield)", async function () {
+      const { contract, owner, mockUSDC } = await loadFixture(deployFondationFixtureOnePercentFees);
       await contract.write.accrueYield({ account: owner.account.address });
-      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(0n);
+      expect(await mockUSDC.read.balanceOf([owner.account.address])).to.equal(0n);
     });
 
-    it("should send the correct amount of aWBTC to the owner (no yield, 20 staked)", async function () {
-      const { contract, owner, mockAWBTC } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
+    it("should send the correct amount of yield to the owner (no yield, 20 staked)", async function () {
+      const { contract, owner, mockUSDC } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
       await contract.write.accrueYield({ account: owner.account.address });
-      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(0n);
+      expect(await mockUSDC.read.balanceOf([owner.account.address])).to.equal(0n);
     });
 
-    it("should send the correct amount of aWBTC to the owner (20 staked, with 30% yield)", async function () {
-      const { contract, owner, mockAWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_2);
+    it("should send the correct amount of yield to the owner (with yield)", async function () {
+      const { contract, owner, mockUSDC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield); // 20 USDC of yield
       await contract.write.accrueYield({ account: owner.account.address });
-      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(2n);
+      expect(await mockUSDC.read.balanceOf([owner.account.address])).to.equal(toBigInt('5'));
     });
 
-    it("should send nothing the second time it's called if yield didn't increase (no change in staking between calls)", async function () {
-      const { contract, owner, mockAWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_2);
+    it("should send nothing the second time it's called if yield didn't increase (no change in yield between calls)", async function () {
+      const { contract, owner, mockUSDC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield); // 20 USDC of yield
       await contract.write.accrueYield({ account: owner.account.address });
       await contract.write.accrueYield({ account: owner.account.address });
-      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(2n);
+      expect(await mockUSDC.read.balanceOf([owner.account.address])).to.equal(toBigInt('5'));
     });
 
     it("should emit the FeesPaid event", async function () {
-      const { contract, owner, publicClient } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
+      const { contract, owner, publicClient } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
       
       // Get the current block before the transaction
       const blockBefore = await publicClient.getBlock({ blockTag: "latest" });
@@ -484,7 +519,7 @@ describe("Fondation", function () {
       
       expect(logs.length).to.equal(1);
       expect(event.eventName).to.equal("FeesPaid");
-      expect(event.args.amount).to.equal(1n);
+      expect(event.args.amount).to.equal(toBigInt('5'));
       expect(Number(event.args.when)).to.be.greaterThanOrEqual(Number(before));
       expect(Number(event.args.when)).to.be.lessThanOrEqual(Number(after));
     });
