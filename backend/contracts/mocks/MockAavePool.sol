@@ -29,12 +29,23 @@ contract MockAavePool is IPool {
     MockERC20 internal USDC;
     uint256 internal btcPrice;
 
+    uint256 private fakeDebtPercent; // Percentage on 2 decimals
+
     constructor(IAToken _aWBTC, MockERC20 _wBTC, MockERC20 _USDC, uint256 _btcPrice) {
         aWBTC = _aWBTC;
         wBTC = _wBTC;
         USDC = _USDC;
         btcPrice = _btcPrice;
-    }    
+    }
+
+    /**
+     * Sets the fake debt percentage for testing purposes.
+     * This function is used to simulate a specific debt percentage in the mock Aave pool.
+     * @param _debtPercent The fake debt percentage to be set on 2 decimals.
+     */
+    function setFakeDebtPercent(uint256 _debtPercent) external {
+        fakeDebtPercent = _debtPercent;
+    }
     
     function mintUnbacked(
         address asset,
@@ -185,13 +196,20 @@ contract MockAavePool is IPool {
             uint256 healthFactor
         )
     {
+        require(user == msg.sender, "MockAavePool: user must be the caller");
+        currentLiquidationThreshold = 80 * 1e2;
+        ltv = 70 * 1e2;
+        totalCollateralBase = (wBTC.balanceOf(address(this)) * btcPrice) / 1e8; // result is already 8 decimals because wBTC has 8 decimals
+        totalDebtBase = (totalCollateralBase * fakeDebtPercent) / 1e4;
+        availableBorrowsBase = (totalCollateralBase * ltv) * 1e4;
+        healthFactor = totalDebtBase == 0 ? type(uint256).max : (totalCollateralBase * currentLiquidationThreshold) * 1e4 / totalDebtBase;
         return (
-            (wBTC.balanceOf(address(this)) * btcPrice) / 1e8,
-            0,
-            USDC.balanceOf(address(this)),
-            0,
-            0,
-            3 * 1e18
+            totalCollateralBase,
+            totalDebtBase,
+            availableBorrowsBase,
+            currentLiquidationThreshold,
+            ltv,
+            healthFactor
         );
     }
 

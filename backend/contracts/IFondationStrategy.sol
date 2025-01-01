@@ -10,10 +10,10 @@ interface IFondationStrategy {
     function getAsset() external view returns (address);
 
     /**
-     * Returns to the caller the oracle contract which provides the BTC price against the asset price
-     * @return An AggregatorV3Interface contract address
+     * Returns to number of decimals of the accepted asset
+     * @return The number of decimals
      */
-    function getPriceFeed() external view returns (address);
+    function getDecimals() external view returns (uint8);
 
     /**
      * Allow to deposit strategy asset

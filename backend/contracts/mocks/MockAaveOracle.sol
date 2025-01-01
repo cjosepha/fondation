@@ -3,22 +3,28 @@ pragma solidity ^0.8.28;
 
 import {IAaveOracle} from "@aave/core-v3/contracts/interfaces/IAaveOracle.sol";
 import {IPoolAddressesProvider} from "@aave/core-v3/contracts/interfaces/IPoolAddressesProvider.sol";
-import {IAToken} from "@aave/core-v3/contracts/interfaces/IAToken.sol";
+import {MockAWBTC} from "./MockAWBTC.sol";
+import {MockERC20} from "./MockERC20.sol";
 
 contract MockAaveOracle is IAaveOracle {
 
-    IAToken internal aWBTC;
-    uint256 internal price;
+    mapping(address => uint256) private prices;
 
-    constructor(IAToken _aWBTC, uint256 _price) {
-        aWBTC = _aWBTC;
-        price = _price;
+    constructor(
+        MockERC20 _wBTC,
+        uint256 _priceWBTC,
+        MockERC20 _USDC,
+        uint256 _priceUSDC
+    ) {
+        prices[address(_wBTC)] = _priceWBTC;
+        prices[address(_USDC)] = _priceUSDC;
     }
     
     function getAssetPrice(
         address _asset
-    ) external view override returns (uint256) {
-        require(_asset == address(aWBTC), "MockAaveOracle: Only aWBTC is supported");
+    ) external view override returns (uint256 price) {
+        price = prices[_asset];
+        require(price != 0, "MockAaveOracle: this asset has no price");
         return price;
     }
 

@@ -17,7 +17,7 @@ contract FakeStrategy is BaseStrategy {
     uint256 public depositedAmount; // For testing purposes
     uint256 public withdrawnAmount; // For testing purposes
     
-    constructor(Fondation _fondation, address _asset, address _priceFeed) BaseStrategy(_fondation, _asset, _priceFeed) {}
+    constructor(Fondation _fondation, address _asset, uint8 _decimals) BaseStrategy(_fondation, _asset, _decimals) {}
 
     function deposit(uint256 _amount) public override onlyFondation {
         super.deposit(_amount);

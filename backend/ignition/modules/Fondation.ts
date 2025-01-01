@@ -10,7 +10,7 @@ const WBTC_ADDRESS = "0x29f2D40B0605204364af54EC677bD022dA425d03"; // WBTC Sepol
 const AWBTC_ADDRESS = "0x1804Bf30507dc2EB3bDEbbbdd859991EAeF6EefF"; // aWBTC Sepolia Testnet
 const AAVE_POOL_ADDRESS = AaveV3Sepolia.POOL; // Aave Pool Sepolia Testnet
 const AAVE_ORACLE_ADDRESS = AaveV3Sepolia.ORACLE; // Aave Oracle Sepolia Testnet
-const CHAINLINK_BTC_USD = "0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43"; // Chainlink BTC/USD Sepolia Testnet
+const UNISWAP_V2_ROUTER_02 = "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3"; // Uniswap V2 Router 02 Sepolia Testnet
 
 const FondationModule = buildModule("FondationModule", (m) => {
   const feesRate = m.getParameter("feesRate", FEES_RATE_0_01);
@@ -18,8 +18,8 @@ const FondationModule = buildModule("FondationModule", (m) => {
   const wBTCAddress = m.getParameter("wBTCAddress", WBTC_ADDRESS);
   const aWBTCAddress = m.getParameter("aWBTCAddress", AWBTC_ADDRESS);
   const aavePoolAddress = m.getParameter("aavePoolAddress", AAVE_POOL_ADDRESS);
-  const chainlinkBTCUSDAddress = m.getParameter("chainlinkBTCUSDAddress", CHAINLINK_BTC_USD);
   const aaveOracleAddress = m.getParameter("aaveOracleAddress", AAVE_ORACLE_ADDRESS);
+  const uniswapV2Router02Address = m.getParameter("uniswapV2Router02Address", UNISWAP_V2_ROUTER_02);
 
   const stBTC = m.contract("stBTC");
   const USDC = m.contractAt("USDC", USDCAddress);
@@ -27,11 +27,11 @@ const FondationModule = buildModule("FondationModule", (m) => {
   const aWBTC = m.contractAt("aWBTC", aWBTCAddress);
   const aavePool = m.contractAt("AavePool", aavePoolAddress);
   const aaveOracle = m.contractAt("AaveOracle", aaveOracleAddress);
-  const chainlinkBTCUSD = m.contractAt("PriceFeed", chainlinkBTCUSDAddress);
+  const uniswapV2Router02 = m.contractAt("UniswapV2Router02", uniswapV2Router02Address);
 
-  const fondation = m.contract("Fondation", [feesRate, wBTC, aWBTC, stBTC, aavePool, aaveOracle]);
+  const fondation = m.contract("Fondation", [feesRate, wBTC, aWBTC, stBTC, aavePool, aaveOracle, uniswapV2Router02]);
   
-  const fakeStrategy = m.contract("FakeStrategy", [fondation, USDC, chainlinkBTCUSD]);
+  const fakeStrategy = m.contract("FakeStrategy", [fondation, USDC, 6]);
 
   m.call(fondation, "setStrategy", [fakeStrategy]);
 

@@ -2,8 +2,11 @@
 pragma solidity ^0.8.28;
 
 import {IERC20} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
+import {Strings} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/Strings.sol";
 
 contract MockERC20 is IERC20 {
+
+    using Strings for uint256;
 
     address public transferedFromFrom;
     address public transferedFromTo;
@@ -51,7 +54,19 @@ contract MockERC20 is IERC20 {
         address to,
         uint256 value
     ) external override returns (bool) {
-        require(fakeBalances[msg.sender] >= value, "ERC20: transfer amount exceeds balance"); // Implementtaion of ERC20.transfer()
+        uint256 balance = fakeBalances[msg.sender];
+        require(
+            balance >= value,
+            string(
+                abi.encodePacked(
+                    "ERC20: transfer amount (",
+                    value.toString(),
+                    ") exceeds balance (",
+                    balance.toString(),
+                    ")"
+                )
+            )
+        ); // Implementtaion of ERC20.transfer()
         fakeBalances[msg.sender] -= value;
         fakeBalances[to] += value;
         transferedTo = to;

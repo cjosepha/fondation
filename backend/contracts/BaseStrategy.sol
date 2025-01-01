@@ -15,17 +15,17 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
     
     Fondation private fondation;
     address internal asset;
-    address internal priceFeed;
+    uint8 internal decimals;
 
     modifier onlyFondation() {
         require(msg.sender == address(fondation), "Caller must be the Fondation contract");
         _;
     }
 
-    constructor(Fondation _fondation, address _asset, address _priceFeed) {
+    constructor(Fondation _fondation, address _asset, uint8 _decimals) {
         fondation = _fondation;
         asset = _asset;
-        priceFeed = _priceFeed;
+        decimals = _decimals;
     }
 
     function deposit(uint256 _amount) public virtual override onlyFondation {
@@ -52,8 +52,8 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
         return asset;
     }   
 
-    function getPriceFeed() external view override returns (address) {
-        return priceFeed;
+    function getDecimals() external view override returns (uint8) {
+        return decimals;
     }
 
 }
