@@ -39,6 +39,8 @@ contract MockAWBTC is MockERC20, IAToken {
         uint256 amount,
         uint256 index
     ) external override returns (bool) {
+        require(caller == onBehalfOf, "MockAWBTC: caller must be equal to onBehalfOf");
+        require(index == 0, "MockAWBTC: index must be 0");
         fakeBalances[onBehalfOf] += amount;
         fakeTotalSupply += amount;
         return true;
@@ -50,6 +52,8 @@ contract MockAWBTC is MockERC20, IAToken {
         uint256 amount,
         uint256 index
     ) external override {
+        require(receiverOfUnderlying != from, "MockAWBTC: receiverOfUnderlying must be different from from");
+        require(index == 0, "MockAWBTC: index must be 0");
         fakeBalances[from] -= amount;
         fakeTotalSupply -= amount;
     }
