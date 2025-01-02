@@ -27,7 +27,7 @@ const FondationModule = buildModule("FondationModule", (m) => {
   const aWBTC = m.contractAt("aWBTC", aWBTCAddress);
   const aavePool = m.contractAt("AavePool", aavePoolAddress);
   const aaveOracle = m.contractAt("AaveOracle", aaveOracleAddress);
-  const uniswapV2Router02 = m.contractAt("UniswapV2Router02", uniswapV2Router02Address);
+  const uniswapV2Router02 = m.contractAt("UniSwapRouter", uniswapV2Router02Address);
 
   const fondation = m.contract("Fondation", [feesRate, wBTC, aWBTC, stBTC, aavePool, aaveOracle, uniswapV2Router02]);
   

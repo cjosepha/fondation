@@ -586,7 +586,7 @@ describe("Fondation unit testing", function () {
       
       const { contract, owner, otherAccount, mockWBTC, mockAWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_2);
 
-      // Owner takes the payout and then retrieve the fees corresponding to the current revenues
+      // Owner takes the fees and accrues the yield on the contract
       await contract.write.accrueYield({ account: owner.account.address });
 
       // A user stakes 20 wBTC

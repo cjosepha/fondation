@@ -10,12 +10,6 @@ const RPC_URL = process.env.RPC_URL;
 const PK_SEPOLIA_AAVE = process.env.PK_SEPOLIA_AAVE;
 const ETHER_SCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 
-console.log("COINMARKETCAP_API_KEY", COINMARKETCAP_API_KEY);
-console.log("RPC_API_KEY", RPC_API_KEY);
-console.log("RPC_URL", RPC_URL);
-console.log("PK_SEPOLIA_AAVE", PK_SEPOLIA_AAVE);
-console.log("ETHER_SCAN_API_KEY", ETHER_SCAN_API_KEY);
-
 const config: HardhatUserConfig = {
   solidity: "0.8.28",
   gasReporter: {
@@ -30,12 +24,16 @@ const config: HardhatUserConfig = {
       chainId: 11155111,
       accounts: [`0x${PK_SEPOLIA_AAVE}`]
     },
-    /*hardhat: {
+    localhost: {
+      url: "http://127.0.0.1:8545",
+      chainId: 31337,
+    },
+    hardhat: {
       forking: {
         url: `${RPC_URL}${RPC_API_KEY}`,
-        blockNumber: 7217548
+        blockNumber: 7407239
       }
-    }*/
+    }
   },
   etherscan:{
     apiKey:{
