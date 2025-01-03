@@ -1,9 +1,16 @@
 'use client';
 
 import { getContract } from 'viem'
-import { fondationAddress, stBTCAddress, wBTCAddress } from "@/constants"
+import {
+    fondationAddress,
+    stBTCAddress,
+    wBTCAddress,
+    STBTC_DECIMALS,
+    WBTC_DECIMALS,
+    EXCHANGE_RATE_DECIMALS
+} from "@/constants"
 import { publicClient } from "@/utils/client"
-import { parseUnits } from 'viem'
+import { parseUnits, formatUnits } from 'viem'
 import stBTCJson from "../../backend/artifacts/contracts/stBTC.sol/stBTC.json"
 import wBTCJson from "../../backend/artifacts/contracts/wBTC.sol/wBTC.json"
 import fondationJson from "../../backend/artifacts/contracts/Fondation.sol/Fondation.json"
@@ -27,10 +34,18 @@ export const wBTC = getContract({
 })
 
 export const parseWBTC = (amount: string) => {
-    return parseUnits(amount, 8)
+    return parseUnits(amount, WBTC_DECIMALS)
 }
 
 export const parseStBTC = (amount: string) => {
-    return parseUnits(amount, 18)
+    return parseUnits(amount, STBTC_DECIMALS)
+}
+
+export const formatStBTC = (amount: bigint) => {
+    return formatUnits(amount, STBTC_DECIMALS)
+}
+
+export const formatExchangeRate = (amount: bigint) : string => {
+    return formatUnits(amount, EXCHANGE_RATE_DECIMALS)
 }
 

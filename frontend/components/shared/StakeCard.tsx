@@ -9,8 +9,18 @@ import {
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { fondation, parseWBTC, wBTC } from "@/utils/contract"
-import { useWriteContract, useReadContract } from "wagmi"
+import {
+    fondation,
+    parseWBTC,
+    wBTC,
+    formatStBTC,
+    formatExchangeRate
+} from "@/utils/contract"
+import {
+    STBTC_DECIMALS,
+    EXCHANGE_RATE_DECIMALS
+} from "@/constants"
+import { useWriteContract, useReadContracts, useWaitForTransactionReceipt } from "wagmi"
 import { use, useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
@@ -30,12 +40,39 @@ const StakeCard = () => {
         }
     })
 
-    const { data: allowance, isLoading } = useReadContract({
-        abi: wBTC.abi,
-        address: wBTC.address,
-        functionName: "allowance",
-        args: [address, fondation.address]
+    const {
+        data,
+        error,
+        isLoading
+    } = useReadContracts({
+        contracts: [{
+            abi: wBTC.abi,
+            address: wBTC.address,
+            functionName: "allowance",
+            args: [address, fondation.address]
+        }, {
+            abi: fondation.abi,
+            address: fondation.address,
+            functionName: "exchangeRate"
+        }]
     })
+    const [allowance, exchangeRate] = data || []
+
+    const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+      hash: hash
+    })
+
+    const isStakeEnabled = () : boolean => {
+        return isConnected && !isLoading && !isPending
+    }
+
+    const expectedStBTCAmount = () => {
+        return (parseWBTC(wBTCAmount) - ((parseWBTC(wBTCAmount) * BigInt(EXCHANGE_RATE_DECIMALS)) / exchangeRate?.result)) * BigInt(1e10)
+    }
+
+    const oneWBTCInStBTC = () => {
+        return (parseWBTC('1.0') -(parseWBTC('1.0') * BigInt(EXCHANGE_RATE_DECIMALS) / exchangeRate?.result)) * BigInt(1e10)
+    }
 
     const stakeWBTC = () => {
         writeContract({
@@ -56,14 +93,14 @@ const StakeCard = () => {
     }
 
     const checkWBTCAllowance = () => {
-        if (isPending || isLoading) { return }
-        allowance < parseWBTC(wBTCAmount) ? approveWBTC() : stakeWBTC()
+        if (!isStakeEnabled()) { return }
+        allowance?.result < parseWBTC(wBTCAmount) ? approveWBTC() : stakeWBTC()
     }
 
     const checkAmountValidity = () : boolean => {
         try {
             const numericAmount = parseFloat(wBTCAmount.trim());
-            if (isNaN(numericAmount) || numericAmount <= 0) {
+            if (isNaN(numericAmount) || numericAmount < 0) {
                 return false;
             }
             return true;
@@ -74,6 +111,7 @@ const StakeCard = () => {
 
     useEffect(() => {
         if (hash) {
+            console.log("Submitted", hash)
             toast({
                 title: "Staking of wBTC submitted",
                 description: "Click to view the transaction",
@@ -82,7 +120,37 @@ const StakeCard = () => {
         }
     }, [hash])
 
+    useEffect(() => {
+        if (isConfirming) {
+            console.log("Confirming", hash)
+            toast({
+                title: "Staking of wBTC in progress...",
+                description: "Click to view the transaction",
+                action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
+            })
+        }
+    }, [isConfirming])
 
+    useEffect(() => {
+        if (isConfirmed) {
+            console.log("Succeed", hash)
+            toast({
+                title: "Staking of wBTC successful",
+                description: "Click to view the transaction",
+                action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
+            })
+        }
+    }, [isConfirmed])
+
+    useEffect(() => {
+        if (error) {
+            console.log("Error", error)
+            toast({
+                title: "Error",
+                description: error.message
+            })
+        }
+    }, [error])
 
     return (
         <Card>
@@ -96,12 +164,15 @@ const StakeCard = () => {
                         <div className="flex flex-col space-y-1.5">
                             <Label>wBTC</Label>
                             <Input value={wBTCAmount} onChange={(e) => setWBTCAmount(e.target.value)} placeholder="Enter the amount of wBTC to stake" />
+                            { !isLoading && checkAmountValidity() && <Label >You will receive { formatStBTC(expectedStBTCAmount()) } stBTC</Label> }
+                            { !isLoading && <Label >1 wBTC = { formatStBTC(oneWBTCInStBTC()) } stBTC</Label> }
+                            { !isLoading && <Label >Exchange rate: {formatExchangeRate(exchangeRate?.result)}</Label> }
                         </div>
                     </div>
                 </form>
             </CardContent>
             <CardFooter className="flex-auto">
-                <Button disabled={isLoading || isPending || !checkAmountValidity()} onClick={checkWBTCAllowance}>
+                <Button disabled={!isStakeEnabled() || !checkAmountValidity()} onClick={checkWBTCAllowance}>
                     { isLoading ? "Loading..." : (isPending ? "Staking..." : "Stake") }
                 </Button>
             </CardFooter>
