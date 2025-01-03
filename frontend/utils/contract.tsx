@@ -1,37 +1,41 @@
 'use client';
 
-import { getContract } from 'viem'
+import { getAddress } from 'viem'
 import {
     fondationAddress,
     stBTCAddress,
     wBTCAddress,
+    aWBTCAddress,
     STBTC_DECIMALS,
     WBTC_DECIMALS,
     EXCHANGE_RATE_DECIMALS
 } from "@/constants"
-import { publicClient } from "@/utils/client"
 import { parseUnits, formatUnits } from 'viem'
+import { useAccount, useReadContract } from "wagmi";
 import stBTCJson from "../../backend/artifacts/contracts/stBTC.sol/stBTC.json"
 import wBTCJson from "../../backend/artifacts/contracts/wBTC.sol/wBTC.json"
+import aWBTCJson from "../../backend/artifacts/contracts/aWBTC.sol/aWBTC.json"
 import fondationJson from "../../backend/artifacts/contracts/Fondation.sol/Fondation.json"
 
-export const fondation = getContract({
-    address: fondationAddress,
-    abi: fondationJson.abi,
-    client: { public: publicClient }
-})
+export const fondation = {
+    address: getAddress(fondationAddress),
+    abi: fondationJson.abi
+}
 
-export const stBTC = getContract({
-    address: stBTCAddress,
-    abi: stBTCJson.abi,
-    client: { public: publicClient }
-})
+export const stBTC = {
+    address: getAddress(stBTCAddress),
+    abi: stBTCJson.abi
+}
 
-export const wBTC = getContract({
-    address: wBTCAddress,
-    abi: wBTCJson.abi,
-    client: { public: publicClient }
-})
+export const wBTC = {
+    address: getAddress(wBTCAddress),
+    abi: wBTCJson.abi
+}
+
+export const aWBTC = {
+    address: getAddress(aWBTCAddress),
+    abi: aWBTCJson.abi
+}
 
 export const parseWBTC = (amount: string) => {
     return parseUnits(amount, WBTC_DECIMALS)
@@ -53,3 +57,21 @@ export const formatExchangeRate = (amount: bigint) => {
     return formatUnits(amount, EXCHANGE_RATE_DECIMALS)
 }
 
+export function useIsOwner() {
+
+    const { isConnected, address } = useAccount();
+
+    const { data: owner, isLoading, error } = useReadContract({
+        abi: fondation.abi,
+        address: fondation.address,
+        functionName: "owner",
+    });
+
+    const isOwner = isConnected && owner === address;
+
+    return {
+        isOwner,
+        isLoading,
+        error,
+    };
+}

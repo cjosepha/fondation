@@ -95,6 +95,7 @@ const StakeCard = () => {
 
     const checkAmountValidity = () : boolean => {
         try {
+            if (wBTCAmount.length == 0) { return false }
             const numericAmount = Number(parseWBTC(wBTCAmount.trim()));
             if (isNaN(numericAmount) || numericAmount < 0) {
                 return false;

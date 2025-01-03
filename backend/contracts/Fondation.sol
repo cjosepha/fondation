@@ -182,6 +182,7 @@ contract Fondation is Ownable, IFondation {
      */
     function setStrategy(IFondationStrategy _strategy) external onlyOwner {
         require(address(_strategy) != address(0), "Invalid strategy address");
+        // TODO: withdraw all funds from the previous strategy
         strategy = _strategy;
     }
 

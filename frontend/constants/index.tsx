@@ -1,6 +1,7 @@
 export const fondationAddress = "0xECfEeF808513f98725a7000BE5910663D7326284";
 export const stBTCAddress = "0xF62Aa5366d5B86312E5493C18170616346Dd9316";
 export const wBTCAddress = "0x29f2D40B0605204364af54EC677bD022dA425d03";
+export const aWBTCAddress = "0x1804Bf30507dc2EB3bDEbbbdd859991EAeF6EefF";
 export const EXCHANGE_RATE_DECIMALS = 9;
 export const STBTC_DECIMALS = 18;
 export const WBTC_DECIMALS = 8;

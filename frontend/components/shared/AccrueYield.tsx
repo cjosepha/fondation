@@ -8,27 +8,19 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import {
     fondation,
-    parseStBTC,
+    aWBTC,
     formatWBTC,
-    formatExchangeRate
+    formatExchangeRate,
 } from "@/utils/contract"
-import {
-    EXCHANGE_RATE_DECIMALS
-} from "@/constants"
 import { useWriteContract, useReadContracts, useWaitForTransactionReceipt } from "wagmi"
-import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
-import { useAccount } from "wagmi";
+import { useEffect } from "react"
 
-const UnstakeCard = () => {
 
-    const { isConnected, address } = useAccount()
-
-    const [stBTCAmount, setStBTCAmount] = useState("")
+const AccrueYieldCard = () => {
 
     const { toast } = useToast()
 
@@ -44,53 +36,35 @@ const UnstakeCard = () => {
         isLoading
     } = useReadContracts({
         contracts: [{
+            abi: aWBTC.abi,
+            address: aWBTC.address,
+            functionName: "balanceOf",
+            args: [fondation.address]
+        }, {
             abi: fondation.abi,
             address: fondation.address,
             functionName: "exchangeRate"
         }]
     })
-    const [exchangeRate] = data || []
+    const [balance, exchangeRate] = data || []
 
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
       hash: hash
     })
 
-    const isUnstakeEnabled = () : boolean => {
-        return isConnected && !isLoading && !isPending
-    }
-
-    const expectedWBTCAmount = (_stBTCAmount : string) => {
-        const result = (parseStBTC(_stBTCAmount) * exchangeRate?.result) / BigInt(10 ** EXCHANGE_RATE_DECIMALS);
-        return formatWBTC(result / BigInt(10 ** 10)); // 10 = 18 - 8
-    }
-
-    const unstakeStBTC = () => {
+    const accueYield = () => {
         writeContract({
             abi: fondation.abi,
             address: fondation.address,
-            functionName: "unstake",
-            args: [parseStBTC(stBTCAmount)]
+            functionName: "accrueYield"
         })
-    }
-
-    const checkAmountValidity = () : boolean => {
-        try {
-            if (stBTCAmount.length == 0) { return false }
-            const numericAmount = Number(parseStBTC(stBTCAmount.trim()));
-            if (isNaN(numericAmount) || numericAmount < 0) {
-                return false;
-            }
-            return true;
-        } catch (error) {
-            return false;
-        }
     }
 
     useEffect(() => {
         if (hash) {
             console.log("Submitted", hash)
             toast({
-                title: "Unstaking of stBTC submitted",
+                title: "Accrue Yield submitted",
                 description: "Click to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
@@ -101,7 +75,7 @@ const UnstakeCard = () => {
         if (isConfirming) {
             console.log("Confirming", hash)
             toast({
-                title: "Unstaking of stBTC in progress...",
+                title: "Accrue Yield in progress...",
                 description: "Click to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
@@ -112,7 +86,7 @@ const UnstakeCard = () => {
         if (isConfirmed) {
             console.log("Succeed", hash)
             toast({
-                title: "Unstaking of stBTC successful",
+                title: "Accrue Yield successful",
                 description: "Click to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
@@ -132,32 +106,26 @@ const UnstakeCard = () => {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Unstake stBTC</CardTitle>
-                <CardDescription>Unstake your stBTC and get the equivalent amount of wBTC in return</CardDescription>
+                <CardTitle>Accrue Yield</CardTitle>
+                <CardDescription>Accrue the yields generated in the Strategy contract onto the Fondation contract</CardDescription>
             </CardHeader>
             <CardContent>
                 <form>
                     <div className="grid w-full items-center gap-4">
                         <div className="flex flex-col space-y-2">
-                            <div className="flex flex-row">
-                                <Input value={stBTCAmount} onChange={(e) => setStBTCAmount(e.target.value)} placeholder="Enter the amount of stBTC to unstake" />
-                                <Label className="ml-2 mt-auto mb-auto">stBTC</Label>
-                            </div>
-                            <div className="flex flex-row justify-between">
-                                { !isLoading && checkAmountValidity() && <Label >You will receive { expectedWBTCAmount(stBTCAmount) } wBTC</Label> }
-                                { !isLoading && <Label >1 stBTC = { expectedWBTCAmount('1.0') } wBTC</Label> }
-                            </div>
+                            <Label >Total wBTC locked in Fondation : { isLoading ? "--" : formatWBTC(balance?.result) }</Label>
+                            <Label >Current exchange rate : { isLoading ? "--" : formatExchangeRate(exchangeRate?.result) }</Label>
                         </div>
                     </div>
                 </form>
             </CardContent>
             <CardFooter className="flex-auto">
-                <Button disabled={!isUnstakeEnabled() || !checkAmountValidity()} onClick={unstakeStBTC}>
-                    { isLoading ? "Loading..." : (isPending ? "Unstaking..." : "Unstake") }
+                <Button disabled={isLoading} onClick={accueYield}>
+                    { isLoading ? "Loading..." : (isPending ? "Processing..." : "Accrue Yield") }
                 </Button>
             </CardFooter>
         </Card>
     );
 };
 
-export default UnstakeCard;
+export default AccrueYieldCard;
