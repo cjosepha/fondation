@@ -49,7 +49,7 @@ export const formatStBTC = (amount: bigint) => {
     return formatUnits(amount, STBTC_DECIMALS)
 }
 
-export const formatExchangeRate = (amount: bigint) : string => {
+export const formatExchangeRate = (amount: bigint) => {
     return formatUnits(amount, EXCHANGE_RATE_DECIMALS)
 }
 

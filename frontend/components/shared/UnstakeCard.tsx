@@ -19,7 +19,7 @@ import {
     EXCHANGE_RATE_DECIMALS
 } from "@/constants"
 import { useWriteContract, useReadContracts, useWaitForTransactionReceipt } from "wagmi"
-import { use, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { useAccount } from "wagmi";
@@ -59,12 +59,8 @@ const UnstakeCard = () => {
         return isConnected && !isLoading && !isPending
     }
 
-    const expectedWBTCAmount = () => {
-        return (parseStBTC(stBTCAmount) *  exchangeRate?.result / BigInt(EXCHANGE_RATE_DECIMALS)) / BigInt(1e10)
-    }
-
-    const oneStBTCInWBTC = () => {
-        return (parseStBTC('1.0') * exchangeRate?.result / BigInt(EXCHANGE_RATE_DECIMALS)) / BigInt(1e10)
+    const expectedWBTCAmount = (_stBTCAmount : string) => {
+        return parseFloat(_stBTCAmount) * parseFloat(formatExchangeRate(exchangeRate?.result))
     }
 
     const unstakeStBTC = () => {
@@ -143,8 +139,8 @@ const UnstakeCard = () => {
                         <div className="flex flex-col space-y-1.5">
                             <Label>wBTC</Label>
                             <Input value={stBTCAmount} onChange={(e) => setStBTCAmount(e.target.value)} placeholder="Enter the amount of stBTC to unstake" />
-                            { !isLoading && checkAmountValidity() && <Label >You will receive { formatWBTC(expectedWBTCAmount()) } wBTC</Label> }
-                            { !isLoading && <Label >1 stBTC = { formatWBTC(oneStBTCInWBTC()) } wBTC</Label> }
+                            { !isLoading && checkAmountValidity() && <Label >You will receive { expectedWBTCAmount(stBTCAmount) } wBTC</Label> }
+                            { !isLoading && <Label >1 stBTC = { expectedWBTCAmount('1.0') } wBTC</Label> }
                             { !isLoading && <Label >Exchange rate: {formatExchangeRate(exchangeRate?.result)}</Label> }
                         </div>
                     </div>

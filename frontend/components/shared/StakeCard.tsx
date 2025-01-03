@@ -20,7 +20,7 @@ import {
     EXCHANGE_RATE_DECIMALS
 } from "@/constants"
 import { useWriteContract, useReadContracts, useWaitForTransactionReceipt } from "wagmi"
-import { use, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { useAccount } from "wagmi";
@@ -65,12 +65,8 @@ const StakeCard = () => {
         return isConnected && !isLoading && !isPending
     }
 
-    const expectedStBTCAmount = () => {
-        return (parseWBTC(wBTCAmount) - ((parseWBTC(wBTCAmount) * BigInt(EXCHANGE_RATE_DECIMALS)) / exchangeRate?.result)) * BigInt(1e10)
-    }
-
-    const oneWBTCInStBTC = () => {
-        return (parseWBTC('1.0') -(parseWBTC('1.0') * BigInt(EXCHANGE_RATE_DECIMALS) / exchangeRate?.result)) * BigInt(1e10)
+    const expectedStBTCAmount = (_wBTCAmount : string) => {
+        return parseFloat(_wBTCAmount) - (parseFloat(_wBTCAmount) / parseFloat(formatExchangeRate(exchangeRate?.result)))
     }
 
     const stakeWBTC = () => {
@@ -163,8 +159,8 @@ const StakeCard = () => {
                         <div className="flex flex-col space-y-1.5">
                             <Label>wBTC</Label>
                             <Input value={wBTCAmount} onChange={(e) => setWBTCAmount(e.target.value)} placeholder="Enter the amount of wBTC to stake" />
-                            { !isLoading && checkAmountValidity() && <Label >You will receive { formatStBTC(expectedStBTCAmount()) } stBTC</Label> }
-                            { !isLoading && <Label >1 wBTC = { formatStBTC(oneWBTCInStBTC()) } stBTC</Label> }
+                            { !isLoading && checkAmountValidity() && <Label >You will receive { expectedStBTCAmount(wBTCAmount) } stBTC</Label> }
+                            { !isLoading && <Label >1 wBTC = { expectedStBTCAmount('1.0') } stBTC</Label> }
                             { !isLoading && <Label >Exchange rate: {formatExchangeRate(exchangeRate?.result)}</Label> }
                         </div>
                     </div>
