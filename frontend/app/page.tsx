@@ -1,13 +1,11 @@
+'use client';
 
-import { publicClient } from "@/utils/client";
-import { contract } from "@/utils/contract";
-import { decodeEventLog, parseAbiItem } from 'viem'
+import StakeCard from "@/components/shared/StakeCard";
 
 export default function Home() {
   return (
-    <div>
-      <h1>Home</h1>
-      <p>Welcome to Fondation</p>
+    <div className="container">
+      <StakeCard />
     </div>
   );
 }
