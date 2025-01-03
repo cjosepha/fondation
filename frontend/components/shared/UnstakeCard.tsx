@@ -11,9 +11,8 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import {
     fondation,
-    parseWBTC,
-    wBTC,
-    formatStBTC,
+    parseStBTC,
+    formatWBTC,
     formatExchangeRate
 } from "@/utils/contract"
 import {
@@ -25,11 +24,11 @@ import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { useAccount } from "wagmi";
 
-const StakeCard = () => {
+const UnstakeCard = () => {
 
     const { isConnected, address } = useAccount()
 
-    const [wBTCAmount, setWBTCAmount] = useState("")
+    const [stBTCAmount, setStBTCAmount] = useState("")
 
     const { toast } = useToast()
 
@@ -45,60 +44,41 @@ const StakeCard = () => {
         isLoading
     } = useReadContracts({
         contracts: [{
-            abi: wBTC.abi,
-            address: wBTC.address,
-            functionName: "allowance",
-            args: [address, fondation.address]
-        }, {
             abi: fondation.abi,
             address: fondation.address,
             functionName: "exchangeRate"
         }]
     })
-    const [allowance, exchangeRate] = data || []
+    const [exchangeRate] = data || []
 
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
       hash: hash
     })
 
-    const isStakeEnabled = () : boolean => {
+    const isUnstakeEnabled = () : boolean => {
         return isConnected && !isLoading && !isPending
     }
 
-    const expectedStBTCAmount = () => {
-        return (parseWBTC(wBTCAmount) - ((parseWBTC(wBTCAmount) * BigInt(EXCHANGE_RATE_DECIMALS)) / exchangeRate?.result)) * BigInt(1e10)
+    const expectedWBTCAmount = () => {
+        return (parseStBTC(stBTCAmount) *  exchangeRate?.result / BigInt(EXCHANGE_RATE_DECIMALS)) / BigInt(1e10)
     }
 
-    const oneWBTCInStBTC = () => {
-        return (parseWBTC('1.0') -(parseWBTC('1.0') * BigInt(EXCHANGE_RATE_DECIMALS) / exchangeRate?.result)) * BigInt(1e10)
+    const oneStBTCInWBTC = () => {
+        return (parseStBTC('1.0') * exchangeRate?.result / BigInt(EXCHANGE_RATE_DECIMALS)) / BigInt(1e10)
     }
 
-    const stakeWBTC = () => {
+    const unstakeStBTC = () => {
         writeContract({
             abi: fondation.abi,
             address: fondation.address,
-            functionName: "stake",
-            args: [parseWBTC(wBTCAmount)]
+            functionName: "unstake",
+            args: [parseStBTC(stBTCAmount)]
         })
-    }
-
-    const approveWBTC = () => {
-        writeContract({
-            abi: wBTC.abi,
-            address: wBTC.address,
-            functionName: "approve",
-            args: [fondation.address, parseWBTC(wBTCAmount)]
-        })
-    }
-
-    const checkWBTCAllowance = () => {
-        if (!isStakeEnabled()) { return }
-        allowance?.result < parseWBTC(wBTCAmount) ? approveWBTC() : stakeWBTC()
     }
 
     const checkAmountValidity = () : boolean => {
         try {
-            const numericAmount = parseFloat(wBTCAmount.trim());
+            const numericAmount = parseFloat(stBTCAmount.trim());
             if (isNaN(numericAmount) || numericAmount < 0) {
                 return false;
             }
@@ -112,7 +92,7 @@ const StakeCard = () => {
         if (hash) {
             console.log("Submitted", hash)
             toast({
-                title: "Staking of wBTC submitted",
+                title: "Unstaking of stBTC submitted",
                 description: "Click to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
@@ -123,7 +103,7 @@ const StakeCard = () => {
         if (isConfirming) {
             console.log("Confirming", hash)
             toast({
-                title: "Staking of wBTC in progress...",
+                title: "Unstaking of stBTC in progress...",
                 description: "Click to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
@@ -134,7 +114,7 @@ const StakeCard = () => {
         if (isConfirmed) {
             console.log("Succeed", hash)
             toast({
-                title: "Staking of wBTC successful",
+                title: "Unstaking of stBTC successful",
                 description: "Click to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
@@ -154,29 +134,29 @@ const StakeCard = () => {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Stake wBTC</CardTitle>
-                <CardDescription>Stake your wBTC and get the equivalent amount of stBTC in return</CardDescription>
+                <CardTitle>Unstake stBTC</CardTitle>
+                <CardDescription>Unstake your stBTC and get the equivalent amount of wBTC in return</CardDescription>
             </CardHeader>
             <CardContent>
                 <form>
                     <div className="grid w-full items-center gap-4">
                         <div className="flex flex-col space-y-1.5">
                             <Label>wBTC</Label>
-                            <Input value={wBTCAmount} onChange={(e) => setWBTCAmount(e.target.value)} placeholder="Enter the amount of wBTC to stake" />
-                            { !isLoading && checkAmountValidity() && <Label >You will receive { formatStBTC(expectedStBTCAmount()) } stBTC</Label> }
-                            { !isLoading && <Label >1 wBTC = { formatStBTC(oneWBTCInStBTC()) } stBTC</Label> }
+                            <Input value={stBTCAmount} onChange={(e) => setStBTCAmount(e.target.value)} placeholder="Enter the amount of stBTC to unstake" />
+                            { !isLoading && checkAmountValidity() && <Label >You will receive { formatWBTC(expectedWBTCAmount()) } wBTC</Label> }
+                            { !isLoading && <Label >1 stBTC = { formatWBTC(oneStBTCInWBTC()) } wBTC</Label> }
                             { !isLoading && <Label >Exchange rate: {formatExchangeRate(exchangeRate?.result)}</Label> }
                         </div>
                     </div>
                 </form>
             </CardContent>
             <CardFooter className="flex-auto">
-                <Button disabled={!isStakeEnabled() || !checkAmountValidity()} onClick={checkWBTCAllowance}>
-                    { isLoading ? "Loading..." : (isPending ? "Staking..." : "Stake") }
+                <Button disabled={!isUnstakeEnabled() || !checkAmountValidity()} onClick={unstakeStBTC}>
+                    { isLoading ? "Loading..." : (isPending ? "Unstaking..." : "Unstake") }
                 </Button>
             </CardFooter>
         </Card>
     );
 };
 
-export default StakeCard;
+export default UnstakeCard;

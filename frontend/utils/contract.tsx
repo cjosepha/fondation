@@ -37,6 +37,10 @@ export const parseWBTC = (amount: string) => {
     return parseUnits(amount, WBTC_DECIMALS)
 }
 
+export const formatWBTC = (amount: bigint) => {
+    return formatUnits(amount, WBTC_DECIMALS)
+}
+
 export const parseStBTC = (amount: string) => {
     return parseUnits(amount, STBTC_DECIMALS)
 }
