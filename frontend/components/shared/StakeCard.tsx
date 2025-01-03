@@ -66,7 +66,8 @@ const StakeCard = () => {
     }
 
     const expectedStBTCAmount = (_wBTCAmount : string) => {
-        return parseFloat(_wBTCAmount) - (parseFloat(_wBTCAmount) / parseFloat(formatExchangeRate(exchangeRate?.result)))
+        const result = parseWBTC(_wBTCAmount) * BigInt(10 ** EXCHANGE_RATE_DECIMALS) / exchangeRate?.result;
+        return formatStBTC(result * BigInt(10 ** 10)); // 10 = 18 - 8
     }
 
     const stakeWBTC = () => {
@@ -94,7 +95,7 @@ const StakeCard = () => {
 
     const checkAmountValidity = () : boolean => {
         try {
-            const numericAmount = parseFloat(wBTCAmount.trim());
+            const numericAmount = Number(parseWBTC(wBTCAmount.trim()));
             if (isNaN(numericAmount) || numericAmount < 0) {
                 return false;
             }
@@ -156,12 +157,15 @@ const StakeCard = () => {
             <CardContent>
                 <form>
                     <div className="grid w-full items-center gap-4">
-                        <div className="flex flex-col space-y-1.5">
-                            <Label>wBTC</Label>
-                            <Input value={wBTCAmount} onChange={(e) => setWBTCAmount(e.target.value)} placeholder="Enter the amount of wBTC to stake" />
-                            { !isLoading && checkAmountValidity() && <Label >You will receive { expectedStBTCAmount(wBTCAmount) } stBTC</Label> }
-                            { !isLoading && <Label >1 wBTC = { expectedStBTCAmount('1.0') } stBTC</Label> }
-                            { !isLoading && <Label >Exchange rate: {formatExchangeRate(exchangeRate?.result)}</Label> }
+                        <div className="flex flex-col space-y-2">
+                            <div className="flex flex-row">
+                                <Input value={wBTCAmount} onChange={(e) => setWBTCAmount(e.target.value)} placeholder="Enter the amount of wBTC to stake" />
+                                <Label className="ml-2 mt-auto mb-auto">wBTC</Label>
+                            </div>
+                            <div className="flex flex-row justify-between">
+                                { !isLoading && checkAmountValidity() && <Label >You will receive { expectedStBTCAmount(wBTCAmount) } stBTC</Label> }
+                                { !isLoading && <Label >1 wBTC = { expectedStBTCAmount('1.0') } stBTC</Label> }
+                            </div>
                         </div>
                     </div>
                 </form>

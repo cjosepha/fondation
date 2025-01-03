@@ -26,11 +26,11 @@ header {
 }
 
 .container {
-  @apply flex-auto p-4 space-y-8;
+  @apply flex-auto p-4 space-y-8 mx-auto;
 }
 
 .menu {
-  @apply flex p-4 gap-4 underline;
+  @apply flex p-4 gap-4 underline mx-auto;
 }
 
 h1 {

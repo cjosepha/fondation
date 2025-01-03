@@ -8,10 +8,12 @@ export default function Home() {
   return (
     <div className="container">
       <Tabs defaultValue="stake">
-        <TabsList>
-          <TabsTrigger value="stake">Stake</TabsTrigger>
-          <TabsTrigger value="unstake">Unstake</TabsTrigger>
-        </TabsList>
+        <div className="flex justify-center">
+          <TabsList>
+            <TabsTrigger value="stake">Stake</TabsTrigger>
+            <TabsTrigger value="unstake">Unstake</TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="stake"><StakeCard /></TabsContent>
         <TabsContent value="unstake"><UnstakeCard /></TabsContent>
       </Tabs>
