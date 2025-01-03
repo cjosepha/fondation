@@ -5,7 +5,10 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 const Header = () => {
     return (
         <header>
-            <h1>Fondation - Liquid Staking for Bitcoin</h1>
+            <div>
+                <h1>Fondation</h1>
+                <h3>Liquid Staking for Bitcoin</h3>
+            </div>
             <ConnectButton />
         </header>
     );
