@@ -13,11 +13,6 @@ async function main() {
 
   const [mySepoliaAccount] = await hre.viem.getWalletClients({ account: IMPERSONATED_ACCOUNT });
 
-  await hre.network.provider.send("hardhat_setBalance", [
-    IMPERSONATED_ACCOUNT,
-    "0x56BC75E2D63100000" // 100 ETH in hex
-  ]);
-
   const [hardhat0, hardhat1, hardhat2] = await hre.viem.getWalletClients();
   console.log(hardhat0.account.address);
   console.log(hardhat1.account.address);

@@ -10,12 +10,14 @@ import {IAaveOracle} from "@aave/core-v3/contracts/interfaces/IAaveOracle.sol";
 import {IFondationStrategy} from "./IFondationStrategy.sol";
 import {IUniswapV2Router02} from '@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol';
 
+interface IFondation {} // For testing purposes
+
 /**
  * @title Fondation
  * The Fondation contract is the user facade of the Fondation system.
  * Users interact with this contract to stake and unstake wBTC.
  */
-contract Fondation is Ownable {
+contract Fondation is Ownable, IFondation {
 
     // Decimals
     uint8 private constant WBTC_DECIMALS = 8;
@@ -25,14 +27,14 @@ contract Fondation is Ownable {
     // Tokens
     IERC20 private immutable wBTC; // 8 decimals
     IAToken private immutable aWBTC; // 8 decimals
-    IStBTC private immutable stBTC; // 18 decimals
+    IStBTC public stBTC; // 18 decimals, can be set only once
 
     // Dependencies
     IPool private immutable aavePool;
     IAaveOracle private immutable aaveOracle;
     IUniswapV2Router02 private immutable swapRouter;
 
-    IFondationStrategy private strategy;
+    IFondationStrategy public strategy;
 
     uint256 private minimumHealthFactor = 2 * 1e18; // 18 decimals
 
@@ -53,7 +55,7 @@ contract Fondation is Ownable {
      * @dev Constructor that sets the fees rate for the contract.
      * @param _feesRate The initial fees rate to be set, expressed in 0.01 of %.
      */
-    constructor(uint _feesRate, IERC20 _wBTC, IAToken _aWBTC, IStBTC _stBTC, IPool _aavePool, IAaveOracle _aaveOracle, IUniswapV2Router02 _swapRouter) {
+    constructor(uint _feesRate, IERC20 _wBTC, IAToken _aWBTC, IPool _aavePool, IAaveOracle _aaveOracle, IUniswapV2Router02 _swapRouter) {
         require(
             _feesRate > 0 && _feesRate <= 10000,
             "fees rate is expressed in 0.01 of % and should be between 0 and 10000"
@@ -62,7 +64,6 @@ contract Fondation is Ownable {
         feesRate = _feesRate;
         wBTC = _wBTC;
         aWBTC = _aWBTC;
-        stBTC = _stBTC;
         aavePool = _aavePool;
         aaveOracle = _aaveOracle;
         swapRouter = _swapRouter;
@@ -177,11 +178,20 @@ contract Fondation is Ownable {
     /////////////////////////////
 
     /**
-     * Set the strategy contract to be used, alongside with the asset to be used by the strategy.
+     * Set the strategy contract to be used.
      */
     function setStrategy(IFondationStrategy _strategy) external onlyOwner {
         require(address(_strategy) != address(0), "Invalid strategy address");
         strategy = _strategy;
+    }
+
+    /**
+     * Set the stBTC contract to be used.
+     */
+    function setStBTC(IStBTC _stBTC) external onlyOwner {
+        require(address(stBTC) == address(0), "stBTC can be set only once");
+        require(address(_stBTC) != address(0), "Invalid stBTC address");
+        stBTC = _stBTC;
     }
 
     function accrueYield() external onlyOwner {

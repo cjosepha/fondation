@@ -21,7 +21,6 @@ const FondationModule = buildModule("FondationModule", (m) => {
   const aaveOracleAddress = m.getParameter("aaveOracleAddress", AAVE_ORACLE_ADDRESS);
   const uniswapV2Router02Address = m.getParameter("uniswapV2Router02Address", UNISWAP_V2_ROUTER_02);
 
-  const stBTC = m.contract("stBTC");
   const USDC = m.contractAt("USDC", USDCAddress);
   const wBTC = m.contractAt("wBTC", wBTCAddress);
   const aWBTC = m.contractAt("aWBTC", aWBTCAddress);
@@ -29,11 +28,13 @@ const FondationModule = buildModule("FondationModule", (m) => {
   const aaveOracle = m.contractAt("AaveOracle", aaveOracleAddress);
   const uniswapV2Router02 = m.contractAt("UniSwapRouter", uniswapV2Router02Address);
 
-  const fondation = m.contract("Fondation", [feesRate, wBTC, aWBTC, stBTC, aavePool, aaveOracle, uniswapV2Router02]);
+  const fondation = m.contract("Fondation", [feesRate, wBTC, aWBTC, aavePool, aaveOracle, uniswapV2Router02]);
   
   const fakeStrategy = m.contract("FakeStrategy", [fondation, USDC, 6]);
+  const stBTC = m.contract("stBTC", [fondation]);
 
   m.call(fondation, "setStrategy", [fakeStrategy]);
+  m.call(fondation, "setStBTC", [stBTC]);
 
   return { fondation };
 });
