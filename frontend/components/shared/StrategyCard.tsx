@@ -80,7 +80,7 @@ const StrategyCard = () => {
         try {
             if (assetAmount.length == 0) { return false }
             const numericAmount = Number(parseUSDC(assetAmount.trim()));
-            if (isNaN(numericAmount) || numericAmount < 0) {
+            if (isNaN(numericAmount) || numericAmount <= 0) {
                 return false;
             }
             return true;
@@ -200,9 +200,10 @@ const StrategyCard = () => {
             <CardContent>
                 <div className="grid w-full items-center gap-4">
                     <div className="flex flex-col space-y-2">
-                        <Label >Asset : {isLoading || !getAsset?.result ? "--" : getAddress(getAsset?.result)}</Label>
-                        <Label >Decimals : {isLoading || !getDecimals?.result ? "--" : Number(getDecimals?.result)}</Label>
-                        <Label >Current yield : {isLoading || !getYieldAmount?.result ? "--" : formatFakeStrategyAsset(getYieldAmount?.result)}</Label>
+                        <Label >Asset : {isLoading || (getAsset?.result === undefined) ? "--" : getAddress(getAsset?.result)}</Label>
+                        <Label >Decimals : {isLoading || (getDecimals?.result === undefined) ? "--" : Number(getDecimals?.result)}</Label>
+                        <Label >Current yield : {isLoading || (getYieldAmount?.result === undefined) ? "--" : formatFakeStrategyAsset(getYieldAmount?.result)} USDC</Label>
+                        <Label >Your balance : {isLoading || (balance?.result === undefined) ? "--" : formatFakeStrategyAsset(balance?.result)} USDC</Label>
                     </div>
                     <div className="flex flex-row">
                         <Input value={assetAmount} onChange={(e) => setAssetAmount(e.target.value)} placeholder='Enter an amount' />

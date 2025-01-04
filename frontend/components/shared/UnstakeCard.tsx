@@ -87,7 +87,7 @@ const UnstakeCard = () => {
         try {
             if (stBTCAmount.length == 0) { return false }
             const numericAmount = Number(parseStBTC(stBTCAmount.trim()));
-            if (isNaN(numericAmount) || numericAmount < 0) {
+            if (isNaN(numericAmount) || numericAmount <= 0) {
                 return false;
             }
             return true;

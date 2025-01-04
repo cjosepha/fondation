@@ -17,12 +17,16 @@ import {
   QueryClientProvider,
   QueryClient,
 } from "@tanstack/react-query";
+//import { http } from 'wagmi';
 
 const config = getDefaultConfig({
   appName: 'Fondation',
   projectId: '846e8e9e05bdefbef626f4c8736d21ce',
   chains: [hardhat, sepolia],
-  ssr: true, // If your dApp uses server side rendering (SSR)
+  /*transports: {
+    [sepolia.id]: http(process.env.RPC_SEPOLIA),
+  },*/
+  ssr: true,
 });
 
 const queryClient = new QueryClient();
