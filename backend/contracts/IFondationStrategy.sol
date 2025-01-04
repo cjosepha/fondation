@@ -28,11 +28,11 @@ interface IFondationStrategy {
     function deposit(uint256 _amount) external;
 
     /**
-     * Allow to decomission the contract.
+     * Allow to decommission the contract.
      * This function ensure to withdraw all asset and transfer it to the caller,
      * closing any position and cleaning the strategy.
      */
-    function decomission() external;
+    function decommission() external;
 
     /**
      * Allow to retrieve the current yield in strategy asset

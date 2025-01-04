@@ -150,14 +150,33 @@ contract Fondation is Ownable, IFondation {
 
     /**
      * Set the strategy contract to be used.
+     * If a new strategy is set, the current strategy will be decommissioned and the borrowed asset will be repaid.
+     * It's important to call accrueYield() on the current strategy prior to set a new strategy, to retrieve any pending yield and processes fees.
      */
     function setStrategy(IFondationStrategy _strategy) external onlyOwner {
         
         require(address(_strategy) != address(strategy), "Strategy must be different from the current one");
 
         if (address(strategy) != address(0)) {
+            
             // Decomission the current strategy
-            strategy.decomission();
+            strategy.decommission();
+            
+            // Repay the borrowed strategy asset
+            IERC20 strategyAsset = getStrategyERC20();
+            uint256 repaidAmount = strategyAsset.balanceOf(address(this));
+            
+            bool approved = strategyAsset.approve(address(aavePool), repaidAmount);
+            require(approved, "Strategy asset approval failed");
+            
+            uint256 repaid = aavePool.repay(
+                strategy.getAsset(),
+                repaidAmount,
+                2,
+                address(this)
+            );
+            
+            require(repaid == repaidAmount, "Repay failed");
         }
 
         strategy = _strategy;
@@ -187,7 +206,7 @@ contract Fondation is Ownable, IFondation {
 
             uint fees = rawYield * feesRate / 1e4;
             uint netYield = rawYield - fees;
-            IERC20 strategyAsset = getStrategyAsset();
+            IERC20 strategyAsset = getStrategyERC20();
             uint8 strategyAssetDecimals = strategy.getDecimals();
 
             // Transfer the fees to the owner of the contract
@@ -257,14 +276,14 @@ contract Fondation is Ownable, IFondation {
 
     function depositToStrategy(uint _strategyAssetAmount) private {
         // Approve IFondationStrategy to spend on behalf of Fondation
-        bool approved = getStrategyAsset().approve(address(strategy), _strategyAssetAmount);
+        bool approved = getStrategyERC20().approve(address(strategy), _strategyAssetAmount);
         require(approved, "IFondationStrategy asset approval failed");
         
         // Deposit strategy asset to IFondationStrategy
         strategy.deposit(_strategyAssetAmount);
     }
 
-    function getStrategyAsset() private view returns (IERC20) {
+    function getStrategyERC20() private view returns (IERC20) {
         return IERC20(strategy.getAsset());
     }
 
@@ -285,7 +304,7 @@ contract Fondation is Ownable, IFondation {
             }
 
             // Retrieve strategy asset balance of Fondation contract
-            uint strategyAssetBalance = getStrategyAsset().balanceOf(address(this));
+            uint strategyAssetBalance = getStrategyERC20().balanceOf(address(this));
 
             if (strategyAssetBalance > 0) {
                 // Deposit strategy asset to the IFondationStrategy contract

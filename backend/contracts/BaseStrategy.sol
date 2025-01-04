@@ -47,7 +47,7 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
      * This function must be overridden by derived contracts and called at the end of the child implementation.
      * The child implementation must close all positions and get all the strategy asset back, before calling .
      */
-    function decomission() public virtual override onlyFondation {
+    function decommission() public virtual override onlyFondation {
 
         // Get the amount of strategy asset available
         uint256 amount = IERC20(asset).balanceOf(address(this));

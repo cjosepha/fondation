@@ -3,7 +3,16 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import hre from "hardhat";
-import { Address, decodeEventLog, getAddress, Log, parseUnits } from "viem";
+import { getAddress } from "viem";
+import {
+  decodeEventFromLogs,
+  setBalanceAndAllowance,
+  toBigIntAaveBaseCurrency,
+  toBigIntExchangeRate,
+  toBigIntUSDC,
+  toBigIntWBTC,
+  toBigInt
+} from "./utils";
 
 describe("Fondation unit testing", function () {
 
@@ -612,11 +621,22 @@ describe("Fondation unit testing", function () {
       await expect(contract.write.setStrategy([strategy.address], { account: otherAccount.account.address })).to.be.rejectedWith("Ownable: caller is not the owner");
     });
 
-    it("should set the stBTC contract address", async function () {
+    it("should set the strategy contract address", async function () {
       const { contract, owner, mockUSDC } = await loadFixture(deployFondationFixtureIncomplete);
       const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
       await contract.write.setStrategy([strategy.address], { account: owner.account.address });
       expect((await contract.read.strategy()).toLowerCase()).to.equal(strategy.address);
+    });
+
+    it("should decommission the previous strategy when setting a new strategy", async function () {
+      const { contract, owner, strategy, mockUSDC, mockAavePool } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
+      expect(await strategy.read.getYieldAmount({ account: owner.account.address })).to.equal(toBigIntUSDC('20')); // Yield 20
+      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('820')); // First deposit on strategy is 800 + 20 of yield
+      expect(await mockUSDC.read.balanceOf([contract.address])).to.equal(0n);
+      const newStrategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
+      await contract.write.setStrategy([newStrategy.address], { account: owner.account.address });
+      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(0n);
+      expect(await mockAavePool.read.repaidAmount()).to.equal(toBigIntUSDC('820'));
     });
 
   });
@@ -761,40 +781,4 @@ describe("Fondation unit testing", function () {
 
 });
 
-interface Event {
-  eventName: string;
-  args: any;
-}
 
-function decodeEventFromLogs(logs: Log[], index: number, contract: any): Event {
-  return decodeEventLog({
-    abi: contract.abi,
-    data: logs[index].data,
-    topics: logs[index].topics
-  });
-}
-
-async function setBalanceAndAllowance(token: any, owner: Address, spender: Address, amount: bigint){
-  await token.write.setBalance([owner, amount]);
-  await token.write.setAllowance([owner, spender, amount]);
-}
-
-function toBigInt(stringNumber: string): bigint {
-  return parseUnits(stringNumber, 18);
-}
-
-function toBigIntUSDC(stringNumber: string): bigint {
-  return parseUnits(stringNumber, 6);
-}
-
-function toBigIntWBTC(stringNumber: string): bigint {
-  return parseUnits(stringNumber, 8);
-}
-
-function toBigIntAaveBaseCurrency(stringNumber: string): bigint {
-  return parseUnits(stringNumber, 8);
-}
-
-function toBigIntExchangeRate(stringNumber: string): bigint {
-  return parseUnits(stringNumber, 9);
-}

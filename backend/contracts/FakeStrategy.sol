@@ -30,11 +30,11 @@ contract FakeStrategy is BaseStrategy {
         depositedAmount = _amount;
     }
 
-    function decomission() public override onlyFondation {
+    function decommission() public override onlyFondation {
         yield = 0;
         depositedAmount = 0;
         // In a real strategy, any position should be closed and all asset should be back before calling super.decomission()
-        super.decomission();
+        super.decommission();
     }
 
     function retrieveYield() external override onlyFondation returns (uint256) {

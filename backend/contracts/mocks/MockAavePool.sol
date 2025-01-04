@@ -24,6 +24,11 @@ contract MockAavePool is IPool {
     address public withdrawnTo;
     uint256 public withdrawnAmount;
 
+    address public repaidAsset;
+    uint256 public repaidAmount;
+    address public repaidOnBehalfOf;
+    uint256 public repaidInterestrateMode;
+
     IAToken internal aWBTC;
     MockERC20 internal wBTC;
     MockERC20 internal USDC;
@@ -121,7 +126,15 @@ contract MockAavePool is IPool {
         uint256 amount,
         uint256 interestRateMode,
         address onBehalfOf
-    ) external override returns (uint256) {}
+    ) external override returns (uint256) {
+        require(asset == address(USDC), "MockAavePool: repaid asset should be USDC");
+        repaidAsset = asset;
+        repaidAmount = amount;
+        repaidInterestrateMode = interestRateMode;
+        repaidOnBehalfOf = onBehalfOf;
+        USDC.transferFrom(msg.sender, address(this), amount);
+        return amount;
+    }
 
     function repayWithPermit(
         address asset,
