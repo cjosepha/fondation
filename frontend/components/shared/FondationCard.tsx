@@ -12,12 +12,12 @@ import {
     fondation,
     aWBTC,
     formatWBTC,
-    formatExchangeRate,
+    formatExchangeRate
 } from "@/utils/contract"
 import { useWriteContract, useReadContracts, useWaitForTransactionReceipt } from "wagmi"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
-import { useEffect } from "react"
+import { use, useEffect, useState } from "react"
 
 interface FondationCardProps {
     showAccrueYieldButton: boolean;
@@ -26,6 +26,8 @@ interface FondationCardProps {
 const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
 
     const { toast } = useToast()
+
+    const [fondationYield, setFondationYield] = useState("--")
 
     const { data: hash, writeContract, isPending } = useWriteContract({
         mutation: {
@@ -71,6 +73,18 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
             functionName: "accrueYield"
         })
     }
+
+    useEffect(() => {
+        if (!isLoading
+            && balance?.result !== undefined
+            && totalStaked?.result !== undefined) {
+            setFondationYield(
+                formatWBTC(balance?.result - totalStaked?.result)
+            )
+        } else {
+            setFondationYield("--")
+        }
+    }, [balance, totalStaked])
 
     useEffect(() => {
         if (hash) {
@@ -128,6 +142,7 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
                         <div className="flex flex-col space-y-2">
                             <Label >Total wBTC locked in Fondation : { isLoading || !balance?.result ? "--" : formatWBTC(balance?.result) }</Label>
                             <Label >Total wBTC deposited in Fondation : { isLoading || !totalStaked?.result  ? "--" : formatWBTC(totalStaked?.result) }</Label>
+                            <Label >Current yield : { fondationYield } wBTC</Label>
                             <Label >Maximum wBTC withdrawable : { isLoading || !getMaximumPossibleWithdraw?.result  ? "--" : formatWBTC(getMaximumPossibleWithdraw?.result) }</Label>
                             <Label >Exchange rate : { isLoading || !exchangeRate?.result  ? "--" : formatExchangeRate(exchangeRate?.result) }</Label>
                         </div>
@@ -135,9 +150,14 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
                 </form>
             </CardContent>
             <CardFooter className="flex-auto">
-                {showAccrueYieldButton && (
-                    <Button disabled={isLoading || isPending} onClick={accueYield}>Accrue Yield</Button>
-                )}
+                <div className="flex flex-row mt-auto mb-auto">
+                    {showAccrueYieldButton && (
+                        <div>
+                            <Button disabled={isLoading || isPending} onClick={accueYield}>Accrue Yield</Button>
+                            <Label className="ml-2 mt-auto mb-auto">Retrieve the strategy yield and tranfer fees to owner.</Label>
+                        </div>
+                    )}
+                </div>
             </CardFooter>
         </Card>
     );
