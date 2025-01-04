@@ -16,16 +16,23 @@ interface IFondationStrategy {
     function getDecimals() external view returns (uint8);
 
     /**
+     * Returns the current yield in strategy asset
+     * @return The amount of yield in strategy asset
+     */
+    function getYieldAmount() external view returns (uint256);
+
+    /**
      * Allow to deposit strategy asset
      * @param _amount The amount of strategy asset to deposit
      */
     function deposit(uint256 _amount) external;
 
     /**
-     * Allow to withdraw strategy asset
-     * @param _amount The amount of strategy asset to withdraw
+     * Allow to decomission the contract.
+     * This function ensure to withdraw all asset and transfer it to the caller,
+     * closing any position and cleaning the strategy.
      */
-    function withdraw(uint256 _amount) external;
+    function decomission() external;
 
     /**
      * Allow to retrieve the current yield in strategy asset

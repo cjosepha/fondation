@@ -352,8 +352,8 @@ describe("Fondation unit testing", function () {
       const amount = toBigIntWBTC('1');
       await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
-      expect(await strategy.read.depositedAmount()).to.equal(toBigIntUSDC('32000'));
-      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('32000'));
+      expect(await strategy.read.depositedAmount()).to.equal(toBigIntUSDC('16000'));
+      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('16000'));
     });
 
     it("should mint the corresponding amount of stBTC to the user (exchangeRate = 1.00)", async function () {

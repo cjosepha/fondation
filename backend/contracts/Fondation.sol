@@ -36,15 +36,10 @@ contract Fondation is Ownable, IFondation {
 
     IFondationStrategy public strategy;
 
-    uint256 private minimumHealthFactor = 2 * 1e18; // 18 decimals
+    uint256 private minimumHealthFactorBorrow = 4 * 1e18; // 18 decimals
+    uint256 private minimumHealthFactorWithdraw = 2 * 1e18; // 18 decimals
 
     uint public immutable feesRate; // 0.01 of % so 4 decimals
-
-    modifier onlyStrategy() {
-        require(isStrategyInitialized(), "A IFondationStrategy contract must be set");
-        require(msg.sender == address(strategy), "Caller must be the current IFondationStrategy contract");
-        _;
-    }
 
     event Staked(uint amount, uint when); // Amount of wBTC that has been staked.
     event Unstaked(uint amount, uint when); // Amount of staked wBTC that has been unstaked.
@@ -84,30 +79,7 @@ contract Fondation is Ownable, IFondation {
 
         supplyToPool(_amount);
 
-        if (isStrategyInitialized()) {
-
-            // Get the maximum possible amount of strategy asset that can be borrowed
-            uint maximumBorrow = getMaximumPossibleBorrow();
-
-            if (maximumBorrow > 0) {
-                // Borrow the maximum possible amount of strategy asset
-                aavePool.borrow(
-                    strategy.getAsset(),
-                    maximumBorrow,
-                    2,
-                    0,
-                    address(this)
-                );
-            }
-
-            // Retrieve strategy asset balance of Fondation contract
-            uint strategyAssetBalance = getStrategyAsset().balanceOf(address(this));
-
-            if (strategyAssetBalance > 0) {
-                // Deposit strategy asset to the IFondationStrategy contract
-                depositToStrategy(strategyAssetBalance);
-            }
-        }
+        depositMaxAssetToStrategy();
 
         // Mint stBTC to user
         uint stBTCAmount = _amount * 1e19 / rate;
@@ -123,7 +95,6 @@ contract Fondation is Ownable, IFondation {
      */
     function unstake(uint _amount) external {
         
-        require(isStrategyInitialized(), "A IFondationStrategy contract must be set");
         require(_amount > 0, "You must specify an amount greater than 0");
 
         // Retrieving the exchange rate, before buring the stBTC
@@ -181,9 +152,18 @@ contract Fondation is Ownable, IFondation {
      * Set the strategy contract to be used.
      */
     function setStrategy(IFondationStrategy _strategy) external onlyOwner {
-        require(address(_strategy) != address(0), "Invalid strategy address");
-        // TODO: withdraw all funds from the previous strategy
+        
+        require(address(_strategy) != address(strategy), "Strategy must be different from the current one");
+
+        if (address(strategy) != address(0)) {
+            // Decomission the current strategy
+            strategy.decomission();
+        }
+
         strategy = _strategy;
+
+        // Send the strategy asset to the strategy contract
+        depositMaxAssetToStrategy();
     }
 
     /**
@@ -242,8 +222,12 @@ contract Fondation is Ownable, IFondation {
         }
     }
 
-    function setMinimumHealthFactor(uint256 _minimumHealthFactor) external onlyOwner {
-        minimumHealthFactor = _minimumHealthFactor;
+    function setBorrowHealthFactor(uint256 _minimumHealthFactor) external onlyOwner {
+        minimumHealthFactorBorrow = _minimumHealthFactor;
+    }
+
+    function setWithdrawHealthFactor(uint256 _minimumHealthFactor) external onlyOwner {
+        minimumHealthFactorWithdraw = _minimumHealthFactor;
     }
 
     /////////////////////// 
@@ -284,6 +268,32 @@ contract Fondation is Ownable, IFondation {
         return IERC20(strategy.getAsset());
     }
 
+    function depositMaxAssetToStrategy() private {
+        if (isStrategyInitialized()) {
+            // Get the maximum possible amount of strategy asset that can be borrowed
+            uint maximumBorrow = getMaximumPossibleBorrow();
+
+            if (maximumBorrow > 0) {
+                // Borrow the maximum possible amount of strategy asset
+                aavePool.borrow(
+                    strategy.getAsset(),
+                    maximumBorrow,
+                    2,
+                    0,
+                    address(this)
+                );
+            }
+
+            // Retrieve strategy asset balance of Fondation contract
+            uint strategyAssetBalance = getStrategyAsset().balanceOf(address(this));
+
+            if (strategyAssetBalance > 0) {
+                // Deposit strategy asset to the IFondationStrategy contract
+                depositToStrategy(strategyAssetBalance);
+            }
+        }
+    }
+
     /**
      * Calculates the maximum possible amount of wBTC that can be withdrawn.
      * @return The maximum possible withdrawable amount of wBTC on 8 decimals.
@@ -301,7 +311,7 @@ contract Fondation is Ownable, IFondation {
         ) = aavePool.getUserAccountData(address(this));
 
         // Ensure the health factor is not already below the minimum threshold
-        require(healthFactor > minimumHealthFactor, "Health factor is already below safe levels");
+        require(healthFactor > minimumHealthFactorWithdraw, "Health factor is already below safe levels");
 
         // Get the current wBTC underlying asset balance (aWBTC) of the Fondation contract
         uint256 aWBTCBalance = aWBTC.balanceOf(address(this));
@@ -315,10 +325,10 @@ contract Fondation is Ownable, IFondation {
         uint256 minimumCollateralBase = (totalDebtBase * 1e4) / currentLiquidationThreshold;
 
         // Adjust this minimum collateral to consider the actual mimimum health factor
-        minimumCollateralBase = (minimumCollateralBase * minimumHealthFactor) / 1e18;
+        minimumCollateralBase = (minimumCollateralBase * minimumHealthFactorWithdraw) / 1e18;
 
         if (minimumCollateralBase >= totalCollateralBase) {
-            // No room left to withdraw while keeping HF >= minimumHealthFactor
+            // No room left to withdraw while keeping HF >= minimumHealthFactorWithdraw
             return 0;
         }
 
@@ -348,7 +358,7 @@ contract Fondation is Ownable, IFondation {
         ) = aavePool.getUserAccountData(address(this));
 
         // Ensure the health factor is not already below the minimum threshold
-        require(healthFactor > minimumHealthFactor, "Health factor is already below safe levels");
+        require(healthFactor > minimumHealthFactorBorrow, "Health factor is already below safe levels");
 
         // If there is no collateral, nothing can be borrowed
         if (totalCollateralBase == 0) {
@@ -359,10 +369,10 @@ contract Fondation is Ownable, IFondation {
         uint256 maxDebtAllowed = (totalCollateralBase * currentLiquidationThreshold) / 1e4;
 
         // Adjust this maximum debt to consider the actual mimimum health factor
-        maxDebtAllowed = (maxDebtAllowed * 1e18) / minimumHealthFactor;
+        maxDebtAllowed = (maxDebtAllowed * 1e18) / minimumHealthFactorBorrow;
         
         if (maxDebtAllowed <= totalDebtBase) {
-            // No room left to borrow while keeping HF >= minimumHealthFactor
+            // No room left to borrow while keeping HF >= minimumHealthFactorBorrow
             return 0;
         }
 
