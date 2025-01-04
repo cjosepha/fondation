@@ -14,7 +14,7 @@ import {
     parseWBTC,
     wBTC,
     formatStBTC,
-    formatExchangeRate
+    formatWBTC
 } from "@/utils/contract"
 import {
     EXCHANGE_RATE_DECIMALS
@@ -24,12 +24,21 @@ import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { useAccount } from "wagmi";
+import { parse } from "path"
 
 const StakeCard = () => {
 
     const { isConnected, address } = useAccount()
 
     const [wBTCAmount, setWBTCAmount] = useState("")
+
+    const [needApproval, setNeedApproval] = useState(true);
+
+    const [isApproveEnabled, setIsApproveEnabled] = useState(false);
+
+    const [isStakeEnabled, setIsStakeEnabled] = useState(false);
+
+    const [isFundsSufficient, setIsFundsSufficient] = useState(true);
 
     const { toast } = useToast()
 
@@ -42,7 +51,8 @@ const StakeCard = () => {
     const {
         data,
         error,
-        isLoading
+        isLoading,
+        refetch
     } = useReadContracts({
         contracts: [{
             abi: wBTC.abi,
@@ -50,24 +60,65 @@ const StakeCard = () => {
             functionName: "allowance",
             args: [address, fondation.address]
         }, {
+            abi: wBTC.abi,
+            address: wBTC.address,
+            functionName: "balanceOf",
+            args: [address]
+        }, {
             abi: fondation.abi,
             address: fondation.address,
             functionName: "exchangeRate"
         }]
     })
-    const [allowance, exchangeRate] = data || []
+    const [allowance, balance, exchangeRate] = data || []
 
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
       hash: hash
     })
 
-    const isStakeEnabled = () : boolean => {
-        return isConnected && !isLoading && !isPending
-    }
+    useEffect(() => {
+        if (isConnected && !isLoading && allowance?.result) {
+            setNeedApproval(
+                allowance?.result < parseWBTC(wBTCAmount)
+            );
+        }
+    }, [allowance, wBTCAmount]);
+
+    useEffect(() => {
+        if (isConnected && !isLoading && balance?.result) {
+            setIsFundsSufficient(
+                balance?.result >= parseWBTC(wBTCAmount)
+            );
+        }
+    }, [balance, wBTCAmount]);
+
+    useEffect(() => {
+        setIsApproveEnabled(
+            isConnected &&
+            !isLoading &&
+            !isPending &&
+            needApproval
+        );
+    }, [isConnected, isLoading, isPending, needApproval]);
+
+    useEffect(() => {
+        setIsStakeEnabled(
+            isConnected &&
+            !isLoading &&
+            !isPending &&
+            !needApproval &&
+            isFundsSufficient
+        );
+    }, [isConnected, isLoading, isPending, isFundsSufficient, needApproval]);
 
     const expectedStBTCAmount = (_wBTCAmount : string) => {
         const result = parseWBTC(_wBTCAmount) * BigInt(10 ** EXCHANGE_RATE_DECIMALS) / exchangeRate?.result;
         return formatStBTC(result * BigInt(10 ** 10)); // 10 = 18 - 8
+    }
+
+    const setMaxWBTCAmount = () => {
+        if (!balance?.result) { return }
+        setWBTCAmount(formatWBTC(balance?.result))
     }
 
     const stakeWBTC = () => {
@@ -88,16 +139,11 @@ const StakeCard = () => {
         })
     }
 
-    const checkWBTCAllowance = () => {
-        if (!isStakeEnabled()) { return }
-        allowance?.result < parseWBTC(wBTCAmount) ? approveWBTC() : stakeWBTC()
-    }
-
     const checkAmountValidity = () : boolean => {
         try {
             if (wBTCAmount.length == 0) { return false }
             const numericAmount = Number(parseWBTC(wBTCAmount.trim()));
-            if (isNaN(numericAmount) || numericAmount < 0) {
+            if (isNaN(numericAmount) || numericAmount <= 0) {
                 return false;
             }
             return true;
@@ -136,6 +182,7 @@ const StakeCard = () => {
                 description: "Click to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
+            refetch()
         }
     }, [isConfirmed])
 
@@ -156,25 +203,29 @@ const StakeCard = () => {
                 <CardDescription>Stake your wBTC and get the equivalent amount of stBTC in return</CardDescription>
             </CardHeader>
             <CardContent>
-                <form>
-                    <div className="grid w-full items-center gap-4">
-                        <div className="flex flex-col space-y-2">
-                            <div className="flex flex-row">
-                                <Input value={wBTCAmount} onChange={(e) => setWBTCAmount(e.target.value)} placeholder="Enter the amount of wBTC to stake" />
-                                <Label className="ml-2 mt-auto mb-auto">wBTC</Label>
-                            </div>
-                            <div className="flex flex-row justify-between">
-                                { !isLoading && checkAmountValidity() && <Label >You will receive { expectedStBTCAmount(wBTCAmount) } stBTC</Label> }
-                                { !isLoading && <Label >1 wBTC = { expectedStBTCAmount('1.0') } stBTC</Label> }
-                            </div>
+                <div className="grid w-full items-center gap-4">
+                    <div className="flex flex-col space-y-2">
+                        <div className="flex flex-row mt-auto mb-auto">
+                            <Label >Your balance : { (isLoading || !balance?.result) ? "--" : formatWBTC(balance?.result)} wBTC</Label>
+                        </div>
+                        <div className="flex flex-row mt-auto mb-auto">
+                            <Input value={wBTCAmount} onChange={(e) => setWBTCAmount(e.target.value)} placeholder="Enter the amount of wBTC to stake" />
+                            <Label className="ml-2 mt-auto mb-auto">wBTC</Label>
+                            <Button className="ml-2 mt-auto mb-auto" onClick={setMaxWBTCAmount}>Max</Button>
+                        </div>
+                        <div className="flex flex-row mt-auto mb-auto">
+                            { !isFundsSufficient ? <Label >Insufficient balance</Label> : null }
+                        </div>
+                        <div className="flex flex-row justify-between mt-auto mb-auto">
+                            <Label >You will receive {(isLoading || !checkAmountValidity()) ? "--" : expectedStBTCAmount(wBTCAmount)} stBTC</Label>
+                            <Label >1 wBTC = {isLoading ? "--" : expectedStBTCAmount('1.0')} stBTC</Label>
                         </div>
                     </div>
-                </form>
+                </div>
             </CardContent>
-            <CardFooter className="flex-auto">
-                <Button disabled={!isStakeEnabled() || !checkAmountValidity()} onClick={checkWBTCAllowance}>
-                    { isLoading ? "Loading..." : (isPending ? "Staking..." : "Stake") }
-                </Button>
+            <CardFooter className="flex-auto space-x-2">
+                <Button disabled={!isApproveEnabled || !checkAmountValidity()} onClick={approveWBTC}>Approve</Button>
+                <Button disabled={!isStakeEnabled || !checkAmountValidity()} onClick={stakeWBTC}>Stake</Button>
             </CardFooter>
         </Card>
     );

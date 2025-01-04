@@ -19,8 +19,11 @@ import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { useEffect } from "react"
 
+interface FondationCardProps {
+    showAccrueYieldButton: boolean;
+}
 
-const AccrueYieldCard = () => {
+const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
 
     const { toast } = useToast()
 
@@ -33,7 +36,8 @@ const AccrueYieldCard = () => {
     const {
         data,
         error,
-        isLoading
+        isLoading,
+        refetch
     } = useReadContracts({
         contracts: [{
             abi: aWBTC.abi,
@@ -44,9 +48,17 @@ const AccrueYieldCard = () => {
             abi: fondation.abi,
             address: fondation.address,
             functionName: "exchangeRate"
+        }, {
+            abi: fondation.abi,
+            address: fondation.address,
+            functionName: "getMaximumPossibleWithdraw"
+        }, {
+            abi: fondation.abi,
+            address: fondation.address,
+            functionName: "totalStaked"
         }]
     })
-    const [balance, exchangeRate] = data || []
+    const [balance, exchangeRate, getMaximumPossibleWithdraw, totalStaked] = data || []
 
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
       hash: hash
@@ -85,6 +97,7 @@ const AccrueYieldCard = () => {
     useEffect(() => {
         if (isConfirmed) {
             console.log("Succeed", hash)
+            refetch()
             toast({
                 title: "Accrue Yield successful",
                 description: "Click to view the transaction",
@@ -106,26 +119,28 @@ const AccrueYieldCard = () => {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Accrue Yield</CardTitle>
-                <CardDescription>Accrue the yields generated in the Strategy contract onto the Fondation contract</CardDescription>
+                <CardTitle>Fondation</CardTitle>
+                <CardDescription>Current state of the Fondation contract</CardDescription>
             </CardHeader>
             <CardContent>
                 <form>
                     <div className="grid w-full items-center gap-4">
                         <div className="flex flex-col space-y-2">
-                            <Label >Total wBTC locked in Fondation : { isLoading ? "--" : formatWBTC(balance?.result) }</Label>
-                            <Label >Current exchange rate : { isLoading ? "--" : formatExchangeRate(exchangeRate?.result) }</Label>
+                            <Label >Total wBTC locked in Fondation : { isLoading || !balance?.result ? "--" : formatWBTC(balance?.result) }</Label>
+                            <Label >Total wBTC deposited in Fondation : { isLoading || !totalStaked?.result  ? "--" : formatWBTC(totalStaked?.result) }</Label>
+                            <Label >Maximum wBTC withdrawable : { isLoading || !getMaximumPossibleWithdraw?.result  ? "--" : formatWBTC(getMaximumPossibleWithdraw?.result) }</Label>
+                            <Label >Exchange rate : { isLoading || !exchangeRate?.result  ? "--" : formatExchangeRate(exchangeRate?.result) }</Label>
                         </div>
                     </div>
                 </form>
             </CardContent>
             <CardFooter className="flex-auto">
-                <Button disabled={isLoading} onClick={accueYield}>
-                    { isLoading ? "Loading..." : (isPending ? "Processing..." : "Accrue Yield") }
-                </Button>
+                {showAccrueYieldButton && (
+                    <Button disabled={isLoading || isPending} onClick={accueYield}>Accrue Yield</Button>
+                )}
             </CardFooter>
         </Card>
     );
 };
 
-export default AccrueYieldCard;
+export default FondationCard;

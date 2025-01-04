@@ -1,7 +1,10 @@
-export const fondationAddress = "0xECfEeF808513f98725a7000BE5910663D7326284";
-export const stBTCAddress = "0xF62Aa5366d5B86312E5493C18170616346Dd9316";
+export const fondationAddress = "0xd4E7b9fe84Cd908D0eCBe43EB95e51A01907C0c1";
+export const stBTCAddress = "0xE3490b606315bD344CCB96564962E267c0a7d984";
 export const wBTCAddress = "0x29f2D40B0605204364af54EC677bD022dA425d03";
 export const aWBTCAddress = "0x1804Bf30507dc2EB3bDEbbbdd859991EAeF6EefF";
+export const fakeStrategyAddress = "0xC472C9052aa3Fe076Afd7f0213170774B2952576";
+export const USDCAddress = "0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8";
 export const EXCHANGE_RATE_DECIMALS = 9;
 export const STBTC_DECIMALS = 18;
 export const WBTC_DECIMALS = 8;
+export const USDC_DECIMALS = 6;

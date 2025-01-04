@@ -11,9 +11,10 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import {
     fondation,
+    stBTC,
     parseStBTC,
     formatWBTC,
-    formatExchangeRate
+    formatStBTC
 } from "@/utils/contract"
 import {
     EXCHANGE_RATE_DECIMALS
@@ -29,6 +30,8 @@ const UnstakeCard = () => {
     const { isConnected, address } = useAccount()
 
     const [stBTCAmount, setStBTCAmount] = useState("")
+    const [isUnstakeEnabled, setIsUnstakeEnabled] = useState(false);
+    const [isFundsSufficient, setIsFundsSufficient] = useState(true);
 
     const { toast } = useToast()
 
@@ -41,23 +44,25 @@ const UnstakeCard = () => {
     const {
         data,
         error,
-        isLoading
+        isLoading,
+        refetch
     } = useReadContracts({
         contracts: [{
             abi: fondation.abi,
             address: fondation.address,
             functionName: "exchangeRate"
+        }, {
+            abi: stBTC.abi,
+            address: stBTC.address,
+            functionName: "balanceOf",
+            args: [address]
         }]
     })
-    const [exchangeRate] = data || []
+    const [exchangeRate, balance] = data || []
 
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
       hash: hash
     })
-
-    const isUnstakeEnabled = () : boolean => {
-        return isConnected && !isLoading && !isPending
-    }
 
     const expectedWBTCAmount = (_stBTCAmount : string) => {
         const result = (parseStBTC(_stBTCAmount) * exchangeRate?.result) / BigInt(10 ** EXCHANGE_RATE_DECIMALS);
@@ -73,6 +78,11 @@ const UnstakeCard = () => {
         })
     }
 
+    const setMaxStBTCAmount = () => {
+        if (!balance?.result) { return }
+        setStBTCAmount(formatStBTC(balance?.result))
+    }
+
     const checkAmountValidity = () : boolean => {
         try {
             if (stBTCAmount.length == 0) { return false }
@@ -85,6 +95,23 @@ const UnstakeCard = () => {
             return false;
         }
     }
+
+    useEffect(() => {
+        if (isConnected && !isLoading && balance?.result) {
+            setIsFundsSufficient(
+                balance?.result >= parseStBTC(stBTCAmount)
+            );
+        }
+    }, [balance, stBTCAmount]);
+
+    useEffect(() => {
+        setIsUnstakeEnabled(
+            isConnected &&
+            !isLoading &&
+            !isPending &&
+            isFundsSufficient
+        );
+    }, [isConnected, isLoading, isPending, isFundsSufficient]);
 
     useEffect(() => {
         if (hash) {
@@ -116,6 +143,7 @@ const UnstakeCard = () => {
                 description: "Click to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
+            refetch()
         }
     }, [isConfirmed])
 
@@ -136,25 +164,28 @@ const UnstakeCard = () => {
                 <CardDescription>Unstake your stBTC and get the equivalent amount of wBTC in return</CardDescription>
             </CardHeader>
             <CardContent>
-                <form>
-                    <div className="grid w-full items-center gap-4">
-                        <div className="flex flex-col space-y-2">
-                            <div className="flex flex-row">
-                                <Input value={stBTCAmount} onChange={(e) => setStBTCAmount(e.target.value)} placeholder="Enter the amount of stBTC to unstake" />
-                                <Label className="ml-2 mt-auto mb-auto">stBTC</Label>
-                            </div>
-                            <div className="flex flex-row justify-between">
-                                { !isLoading && checkAmountValidity() && <Label >You will receive { expectedWBTCAmount(stBTCAmount) } wBTC</Label> }
-                                { !isLoading && <Label >1 stBTC = { expectedWBTCAmount('1.0') } wBTC</Label> }
-                            </div>
+                <div className="grid w-full items-center gap-4">
+                    <div className="flex flex-col space-y-2">
+                        <div className="flex flex-row mt-auto mb-auto">
+                            <Label >Your balance : { (isLoading || !balance?.result) ? "--" : formatStBTC(balance?.result)} stBTC</Label>
+                        </div>
+                        <div className="flex flex-row mt-auto mb-auto">
+                            <Input value={stBTCAmount} onChange={(e) => setStBTCAmount(e.target.value)} placeholder="Enter the amount of stBTC to unstake" />
+                            <Label className="ml-2 mt-auto mb-auto">stBTC</Label>
+                            <Button className="ml-2 mt-auto mb-auto" onClick={setMaxStBTCAmount}>Max</Button>
+                        </div>
+                        <div className="flex flex-row mt-auto mb-auto">
+                            { !isFundsSufficient ? <Label >Insufficient balance</Label> : null }
+                        </div>
+                        <div className="flex flex-row justify-between">
+                            <Label >You will receive {(isLoading || !checkAmountValidity()) ? "--" : expectedWBTCAmount(stBTCAmount)} wBTC</Label>
+                            <Label >1 stBTC = {isLoading ? "--" : expectedWBTCAmount('1.0')} wBTC</Label>
                         </div>
                     </div>
-                </form>
+                </div>
             </CardContent>
             <CardFooter className="flex-auto">
-                <Button disabled={!isUnstakeEnabled() || !checkAmountValidity()} onClick={unstakeStBTC}>
-                    { isLoading ? "Loading..." : (isPending ? "Unstaking..." : "Unstake") }
-                </Button>
+                <Button disabled={!isUnstakeEnabled || !checkAmountValidity()} onClick={unstakeStBTC}>Unstake</Button>
             </CardFooter>
         </Card>
     );

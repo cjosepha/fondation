@@ -1,11 +1,17 @@
 'use client';
 
-import AccrueYieldCard from "@/components/shared/AccrueYield";
+import { useAccount } from 'wagmi';
+import FondationCard from "@/components/shared/FondationCard";
+import StrategyCard from "@/components/shared/StrategyCard";
 
-export default function Admin() {  
+export default function Admin() {
+
+  const { isConnected } = useAccount(); // Replace this with your actual wallet connection logic
+
   return (
     <div className="container">
-      <AccrueYieldCard />
+      <FondationCard showAccrueYieldButton={isConnected} />
+      { isConnected ? <StrategyCard /> : null }
     </div>
   );
 }
