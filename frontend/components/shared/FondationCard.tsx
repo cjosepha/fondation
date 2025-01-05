@@ -18,7 +18,7 @@ import {
 import { useWriteContract, useReadContracts, useWaitForTransactionReceipt } from "wagmi"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
-import { use, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { getAddress } from "viem"
 
 interface FondationCardProps {
@@ -28,8 +28,6 @@ interface FondationCardProps {
 const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
 
     const { toast } = useToast()
-
-    const [fondationYield, setFondationYield] = useState("--")
 
     const { data: hash, writeContract, isPending } = useWriteContract({
         mutation: {
@@ -83,18 +81,6 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
             functionName: "accrueYield"
         })
     }
-
-    useEffect(() => {
-        if (!isLoading
-            && balance?.result !== undefined
-            && totalStaked?.result !== undefined) {
-            setFondationYield(
-                formatWBTC(balance?.result - totalStaked?.result)
-            )
-        } else {
-            setFondationYield("--")
-        }
-    }, [balance, totalStaked])
 
     useEffect(() => {
         if (hash) {
