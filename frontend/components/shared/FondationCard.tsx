@@ -18,7 +18,7 @@ import {
 import { useWriteContract, useReadContracts, useWaitForTransactionReceipt } from "wagmi"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { getAddress } from "viem"
 
 interface FondationCardProps {
@@ -136,11 +136,11 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
                 <form>
                     <div className="grid w-full items-center gap-4">
                         <div className="flex flex-col space-y-2">
-                            <Label >Total wBTC locked in Fondation : { isLoading || !balance?.result ? "--" : formatWBTC(balance?.result) }</Label>
-                            <Label >Maximum wBTC withdrawable : { isLoading || !getMaximumPossibleWithdraw?.result  ? "--" : formatWBTC(getMaximumPossibleWithdraw?.result) }</Label>
-                            <Label >Exchange rate : { isLoading || !exchangeRate?.result  ? "--" : formatExchangeRate(exchangeRate?.result) }</Label>
-                            <Label >Fees : { isLoading || !feesRate?.result  ? "--" : formatPercent(feesRate?.result) } %</Label>
-                            <Label >Strategy contract address : { isLoading || !strategy?.result  ? "--" : getAddress(strategy?.result) }</Label>
+                            <Label >Total wBTC locked in Fondation : { isLoading || !balance?.result ? "--" : formatWBTC(balance?.result as bigint) }</Label>
+                            <Label >Maximum wBTC withdrawable : { isLoading || !getMaximumPossibleWithdraw?.result  ? "--" : formatWBTC(getMaximumPossibleWithdraw?.result as bigint) }</Label>
+                            <Label >Exchange rate : { isLoading || !exchangeRate?.result  ? "--" : formatExchangeRate(exchangeRate?.result as bigint) }</Label>
+                            <Label >Fees : { isLoading || !feesRate?.result  ? "--" : formatPercent(feesRate?.result as bigint) } %</Label>
+                            <Label >Strategy contract address : { isLoading || !strategy?.result  ? "--" : getAddress(strategy?.result as string) }</Label>
                         </div>
                     </div>
                 </form>

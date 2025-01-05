@@ -71,7 +71,7 @@ const UnstakeCard = () => {
 
     const expectedWBTCAmount = (_stBTCAmount : string) => {
         if (!exchangeRate?.result) { return "--" }
-        const result = (parseStBTC(_stBTCAmount) * exchangeRate?.result) / BigInt(10 ** EXCHANGE_RATE_DECIMALS);
+        const result = (parseStBTC(_stBTCAmount) * (exchangeRate?.result as bigint)) / BigInt(10 ** EXCHANGE_RATE_DECIMALS);
         return formatWBTC(result / BigInt(10 ** 10)); // 10 = 18 - 8
     }
 
@@ -86,10 +86,10 @@ const UnstakeCard = () => {
 
     const setMaxStBTCAmount = () => {
         if (!balance?.result || !getMaximumPossibleWithdraw?.result) { return }
-        if (balance?.result < (getMaximumPossibleWithdraw?.result * BigInt(1e10))) {
-            setStBTCAmount(formatStBTC(balance?.result))
+        if ((balance?.result as bigint) < ((getMaximumPossibleWithdraw?.result as bigint) * BigInt(1e10))) {
+            setStBTCAmount(formatStBTC(balance?.result as bigint))
         } else {
-            setStBTCAmount(formatWBTC(getMaximumPossibleWithdraw?.result))
+            setStBTCAmount(formatWBTC(getMaximumPossibleWithdraw?.result as bigint))
         }
     }
 
@@ -109,7 +109,7 @@ const UnstakeCard = () => {
     useEffect(() => {
         if (isConnected && !isLoading && balance?.result) {
             setIsFundsSufficient(
-                balance?.result >= parseStBTC(stBTCAmount)
+                (balance?.result as bigint) >= parseStBTC(stBTCAmount)
             );
         }
     }, [balance, stBTCAmount]);
@@ -126,7 +126,7 @@ const UnstakeCard = () => {
     useEffect(() => {
         if (isConnected && !isLoading && (getMaximumPossibleWithdraw?.result !== undefined)) {
             setIsAmountExceedUnstakable(
-                (getMaximumPossibleWithdraw?.result * BigInt(1e10)) < parseStBTC(stBTCAmount)
+                ((getMaximumPossibleWithdraw?.result as bigint) * BigInt(1e10)) < parseStBTC(stBTCAmount)
             )
         }
     }, [stBTCAmount, getMaximumPossibleWithdraw]);
@@ -185,7 +185,7 @@ const UnstakeCard = () => {
                 <div className="grid w-full items-center gap-4">
                     <div className="flex flex-col space-y-2">
                         <div className="flex flex-row mt-auto mb-auto">
-                            <Label >Your balance : { (isLoading || !balance?.result) ? "--" : formatStBTC(balance?.result)} stBTC</Label>
+                            <Label >Your balance : { (isLoading || !balance?.result) ? "--" : formatStBTC(balance?.result as bigint)} stBTC</Label>
                         </div>
                         <div className="flex flex-row mt-auto mb-auto">
                             <Input value={stBTCAmount} onChange={(e) => setStBTCAmount(e.target.value)} placeholder="Enter the amount of stBTC to unstake" />

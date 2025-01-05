@@ -12,7 +12,6 @@ import {
     formatWBTC,
     FondationEvent
 } from "@/utils/contract"
-import { useWatchContractEvent } from 'wagmi'
 import { useState, useEffect } from "react"
 import { Log, decodeEventLog, parseAbiItem } from 'viem'
 import { usePublicClient } from 'wagmi'
@@ -65,7 +64,7 @@ const StakedTable = () => {
     })*/
 
     useEffect(() => {
-        
+
         if (!publicClient || refreshed) { return }
 
         const fetchEvents = async () => {
