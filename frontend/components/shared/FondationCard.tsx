@@ -146,8 +146,6 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
                     <div className="grid w-full items-center gap-4">
                         <div className="flex flex-col space-y-2">
                             <Label >Total wBTC locked in Fondation : { isLoading || !balance?.result ? "--" : formatWBTC(balance?.result) }</Label>
-                            <Label >Total wBTC deposited in Fondation : { isLoading || !totalStaked?.result  ? "--" : formatWBTC(totalStaked?.result) }</Label>
-                            <Label >Current yield : { fondationYield } wBTC</Label>
                             <Label >Maximum wBTC withdrawable : { isLoading || !getMaximumPossibleWithdraw?.result  ? "--" : formatWBTC(getMaximumPossibleWithdraw?.result) }</Label>
                             <Label >Exchange rate : { isLoading || !exchangeRate?.result  ? "--" : formatExchangeRate(exchangeRate?.result) }</Label>
                             <Label >Strategy contract address : { isLoading || !strategy?.result  ? "--" : getAddress(strategy?.result) }</Label>

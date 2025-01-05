@@ -31,7 +31,7 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         url: `${RPC_URL}${RPC_API_KEY}`,
-        blockNumber: 7419781
+        blockNumber: 7427529
       }
     }
   },

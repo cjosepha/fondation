@@ -32,6 +32,7 @@ const UnstakeCard = () => {
     const [stBTCAmount, setStBTCAmount] = useState("")
     const [isUnstakeEnabled, setIsUnstakeEnabled] = useState(false);
     const [isFundsSufficient, setIsFundsSufficient] = useState(true);
+    const [isAmountExceedUnstakable, setIsAmountExceedUnstakable] = useState(true);
 
     const { toast } = useToast()
 
@@ -52,13 +53,17 @@ const UnstakeCard = () => {
             address: fondation.address,
             functionName: "exchangeRate"
         }, {
+            abi: fondation.abi,
+            address: fondation.address,
+            functionName: "getMaximumPossibleWithdraw"
+        }, {
             abi: stBTC.abi,
             address: stBTC.address,
             functionName: "balanceOf",
             args: [address]
         }]
     })
-    const [exchangeRate, balance] = data || []
+    const [exchangeRate, getMaximumPossibleWithdraw, balance] = data || []
 
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
       hash: hash
@@ -79,8 +84,12 @@ const UnstakeCard = () => {
     }
 
     const setMaxStBTCAmount = () => {
-        if (!balance?.result) { return }
-        setStBTCAmount(formatStBTC(balance?.result))
+        if (!balance?.result || !getMaximumPossibleWithdraw?.result) { return }
+        if (balance?.result < (getMaximumPossibleWithdraw?.result * BigInt(1e10))) {
+            setStBTCAmount(formatStBTC(balance?.result))
+        } else {
+            setStBTCAmount(formatWBTC(getMaximumPossibleWithdraw?.result))
+        }
     }
 
     const checkAmountValidity = () : boolean => {
@@ -112,6 +121,14 @@ const UnstakeCard = () => {
             isFundsSufficient
         );
     }, [isConnected, isLoading, isPending, isFundsSufficient]);
+
+    useEffect(() => {
+        if (isConnected && !isLoading && getMaximumPossibleWithdraw?.result) {
+            setIsAmountExceedUnstakable(
+                (getMaximumPossibleWithdraw?.result * BigInt(1e10)) < parseStBTC(stBTCAmount)
+            )
+        }
+    }, [stBTCAmount, getMaximumPossibleWithdraw]);
 
     useEffect(() => {
         if (hash) {
@@ -178,14 +195,18 @@ const UnstakeCard = () => {
                             { !isFundsSufficient ? <Label >Insufficient balance</Label> : null }
                         </div>
                         <div className="flex flex-row justify-between">
-                            <Label >You will receive {(isLoading || !checkAmountValidity()) ? "--" : expectedWBTCAmount(stBTCAmount)} wBTC</Label>
+                            { !isAmountExceedUnstakable ?
+                                <Label >You will receive {(isLoading || !checkAmountValidity()) ? "--" : expectedWBTCAmount(stBTCAmount)} wBTC</Label>
+                                :
+                                <Label >Amount exceeds unstakable amount</Label>
+                            }
                             <Label >1 stBTC = {isLoading ? "--" : expectedWBTCAmount('1.0')} wBTC</Label>
                         </div>
                     </div>
                 </div>
             </CardContent>
             <CardFooter className="flex-auto">
-                <Button disabled={!isUnstakeEnabled || !checkAmountValidity()} onClick={unstakeStBTC}>Unstake</Button>
+                <Button disabled={!isUnstakeEnabled || isAmountExceedUnstakable || !checkAmountValidity()} onClick={unstakeStBTC}>Unstake</Button>
             </CardFooter>
         </Card>
     );

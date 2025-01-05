@@ -68,9 +68,14 @@ const StrategyCard = () => {
             address: USDC.address,
             functionName: "allowance",
             args: [address, fakeStrategy.address]
+        }, {
+            abi: USDC.abi,
+            address: USDC.address,
+            functionName: "balanceOf",
+            args: [fakeStrategy.address]
         }]
     })
-    const [getYieldAmount, getAsset, getDecimals, balance, allowance] = data || []
+    const [getYieldAmount, getAsset, getDecimals, balance, allowance, balanceOf] = data || []
 
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
       hash: hash
@@ -203,6 +208,7 @@ const StrategyCard = () => {
                         <Label >Asset : {isLoading || (getAsset?.result === undefined) ? "--" : getAddress(getAsset?.result)}</Label>
                         <Label >Decimals : {isLoading || (getDecimals?.result === undefined) ? "--" : Number(getDecimals?.result)}</Label>
                         <Label >Current yield : {isLoading || (getYieldAmount?.result === undefined) ? "--" : formatFakeStrategyAsset(getYieldAmount?.result)} USDC</Label>
+                        <Label >Contract balance : {isLoading || (balanceOf?.result === undefined) ? "--" : formatFakeStrategyAsset(balanceOf?.result)} USDC</Label>
                         <Label >Your balance : {isLoading || (balance?.result === undefined) ? "--" : formatFakeStrategyAsset(balance?.result)} USDC</Label>
                     </div>
                     <div className="flex flex-row">

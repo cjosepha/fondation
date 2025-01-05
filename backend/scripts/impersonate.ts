@@ -56,7 +56,7 @@ async function main() {
     args: [hardhat0.account.address, usdcAmountToSend],
   });
 
-  console.log('Transfer 1 TX hash:', result);
+  console.log('Transfer 4 TX hash:', result);
 
 }
 

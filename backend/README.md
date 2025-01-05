@@ -14,6 +14,9 @@ npx hardhat node
 # Deploy on the local fork
 npx hardhat ignition deploy ./ignition/modules/Fondation.ts --network localhost
 
+# Set the balances of the 3 first hardhat wallets in wBTC and the balance of the first hardhat wallet in USDC
+npx hardhat run ./scripts/impersonate.ts --network localhost
+
 # Deploy on Sepolia testnet
 npx hardhat ignition deploy ./ignition/modules/Fondation.ts --network sepolia --verify
 ```
