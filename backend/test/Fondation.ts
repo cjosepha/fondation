@@ -11,7 +11,8 @@ import {
   toBigIntExchangeRate,
   toBigIntUSDC,
   toBigIntWBTC,
-  toBigInt
+  toBigInt,
+  toBigIntRate
 } from "./utils";
 
 describe("Fondation unit testing", function () {
@@ -27,7 +28,7 @@ describe("Fondation unit testing", function () {
     const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
     const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockWBTC.address, btcPrice, mockUSDC.address, usdcPrice]);
     const mockUniSwapRouter = await hre.viem.deployContract("MockUniSwapRouter", [mockUSDC.address, mockWBTC.address, mockAaveOracle.address]);
-    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice, usdcPrice]);
     const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address]);
 
     return { contract, owner, otherAccount, mockWBTC, mockAWBTC, mockAavePool, mockUSDC };
@@ -44,7 +45,7 @@ describe("Fondation unit testing", function () {
     const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
     const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockWBTC.address, btcPrice, mockUSDC.address, usdcPrice]);
     const mockUniSwapRouter = await hre.viem.deployContract("MockUniSwapRouter", [mockUSDC.address, mockWBTC.address, mockAaveOracle.address]);
-    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice, usdcPrice]);
     const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address]);
     const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
     const mockStBTC = await hre.viem.deployContract("MockStBTC", [contract.address]);
@@ -55,7 +56,7 @@ describe("Fondation unit testing", function () {
 
     const publicClient = await hre.viem.getPublicClient();
 
-    await mockUSDC.write.setBalance([mockAavePool.address, toBigIntUSDC('200000')]);
+    await mockUSDC.write.setBalance([mockAavePool.address, toBigIntUSDC('5000000')]);
 
     return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockStBTC, mockAavePool, mockUSDC, strategy };
   }
@@ -71,7 +72,7 @@ describe("Fondation unit testing", function () {
     const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
     const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockWBTC.address, btcPrice, mockUSDC.address, usdcPrice]);
     const mockUniSwapRouter = await hre.viem.deployContract("MockUniSwapRouter", [mockUSDC.address, mockWBTC.address, mockAaveOracle.address]);
-    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice, usdcPrice]);
     const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address]);
     const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
     const mockStBTC = await hre.viem.deployContract("MockStBTC", [contract.address]);
@@ -101,7 +102,7 @@ describe("Fondation unit testing", function () {
     const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
     const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockWBTC.address, btcPrice, mockUSDC.address, usdcPrice]);
     const mockUniSwapRouter = await hre.viem.deployContract("MockUniSwapRouter", [mockUSDC.address, mockWBTC.address, mockAaveOracle.address]);
-    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice, usdcPrice]);
     const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address]);
     const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
     const mockStBTC = await hre.viem.deployContract("MockStBTC", [contract.address]);
@@ -133,7 +134,7 @@ describe("Fondation unit testing", function () {
     const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
     const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockWBTC.address, btcPrice, mockUSDC.address, usdcPrice]);
     const mockUniSwapRouter = await hre.viem.deployContract("MockUniSwapRouter", [mockUSDC.address, mockWBTC.address, mockAaveOracle.address]);
-    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice, usdcPrice]);
     const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address]);
     const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
     const mockStBTC = await hre.viem.deployContract("MockStBTC", [contract.address]);
@@ -165,7 +166,7 @@ describe("Fondation unit testing", function () {
     const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
     const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockWBTC.address, btcPrice, mockUSDC.address, usdcPrice]);
     const mockUniSwapRouter = await hre.viem.deployContract("MockUniSwapRouter", [mockUSDC.address, mockWBTC.address, mockAaveOracle.address]);
-    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice, usdcPrice]);
     const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address]);
     const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
     const mockStBTC = await hre.viem.deployContract("MockStBTC", [contract.address]);
@@ -198,7 +199,7 @@ describe("Fondation unit testing", function () {
     const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
     const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockWBTC.address, btcPrice, mockUSDC.address, usdcPrice]);
     const mockUniSwapRouter = await hre.viem.deployContract("MockUniSwapRouter", [mockUSDC.address, mockWBTC.address, mockAaveOracle.address]);
-    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice, usdcPrice]);
     const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address]);
     const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
     const mockStBTC = await hre.viem.deployContract("MockStBTC", [contract.address]);
@@ -230,7 +231,7 @@ describe("Fondation unit testing", function () {
     const mockAWBTC = await hre.viem.deployContract("MockAWBTC");
     const mockAaveOracle = await hre.viem.deployContract("MockAaveOracle", [mockWBTC.address, btcPrice, mockUSDC.address, usdcPrice]);
     const mockUniSwapRouter = await hre.viem.deployContract("MockUniSwapRouter", [mockUSDC.address, mockWBTC.address, mockAaveOracle.address]);
-    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice]);
+    const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice, usdcPrice]);
     const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address]);
     const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
     const mockStBTC = await hre.viem.deployContract("MockStBTC", [contract.address]);
@@ -244,7 +245,7 @@ describe("Fondation unit testing", function () {
     const amountStaked = toBigIntWBTC('0.05');
 
     await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amountStaked);
-    await mockUSDC.write.setBalance([mockAavePool.address, toBigIntUSDC('200000')]);
+    await mockUSDC.write.setBalance([mockAavePool.address, toBigIntUSDC('20000000')]);
     await contract.write.stake([amountStaked], { account: otherAccount.account.address });
 
     // Adding the yield to the strategy contract in USDC (strategy asset)
@@ -365,6 +366,25 @@ describe("Fondation unit testing", function () {
       expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('16000'));
     });
 
+    it("should deposit the corresponding amount of strategy asset to the strategy contract, no max borrow limit", async function () {
+      const { contract, otherAccount, mockWBTC, mockUSDC, strategy } = await loadFixture(deployFondationFixtureOnePercentFees);
+      const amount = toBigIntWBTC('120');
+      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
+      await contract.write.stake([amount], { account: otherAccount.account.address });
+      expect(await strategy.read.depositedAmount()).to.equal(toBigIntUSDC('1920000'));
+      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('1920000'));
+    });
+
+    it("should deposit the corresponding amount of strategy asset to the strategy contract, max borrow limit is 1000000 USDC", async function () {
+      const { contract, otherAccount, mockWBTC, mockUSDC, strategy, mockAavePool } = await loadFixture(deployFondationFixtureOnePercentFees);
+      await mockUSDC.write.setBalance([mockAavePool.address, toBigIntUSDC('1000000')]);
+      const amount = toBigIntWBTC('120');
+      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
+      await contract.write.stake([amount], { account: otherAccount.account.address });
+      expect(await strategy.read.depositedAmount()).to.equal(toBigIntUSDC('950000')); // The contract takes a 5% margin on the limit
+      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('950000')); // The contract takes a 5% margin on the limit
+    });
+
     it("should mint the corresponding amount of stBTC to the user (exchangeRate = 1.00)", async function () {
       const { contract, otherAccount, mockStBTC, mockWBTC } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
       const amount = 100n;
@@ -404,7 +424,8 @@ describe("Fondation unit testing", function () {
 
     it("should withdraw the correct amount of wBTC to the user (exchangeRate = 1.00, with stake of 20 satoshis)", async function () {
       const { contract, otherAccount, mockAavePool, mockWBTC } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
-      const amountStBTC = toBigInt('0.0000001');
+      expect(await contract.read.getMaximumPossibleWithdraw()).to.equal(20n);
+      const amountStBTC = toBigInt('0.000000100000000000');
       const amountWBTC = toBigIntWBTC('0.0000001');
       await contract.write.unstake([amountStBTC], { account: otherAccount.account.address });
       expect((await mockAavePool.read.withdrawnTo()).toLowerCase()).to.equal(otherAccount.account.address);
@@ -414,6 +435,7 @@ describe("Fondation unit testing", function () {
 
     it("should withdraw the correct amount of wBTC to the user (exchangeRate = 1.20, with stake of 20 satoshis, unstake of 15 stSatoshis)", async function () {
       const { contract, otherAccount, mockAavePool, mockWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
+      expect(await contract.read.getMaximumPossibleWithdraw()).to.equal(24n);
       const amountStBTC = toBigInt('0.00000015');
       const amountWBTC = toBigIntWBTC('0.00000018'); // 15 * 1.20 = 18
       await contract.write.unstake([amountStBTC], { account: otherAccount.account.address });
@@ -508,6 +530,55 @@ describe("Fondation unit testing", function () {
       await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await contract.write.stake([amount], { account: otherAccount.account.address });
       expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1.40'));
+    });
+
+  });
+
+  describe("getMaximumPossibleWithdraw", function () {
+    
+    it("should return 0 if there is nothing staked", async function () {
+      const { contract } = await loadFixture(deployFondationFixtureOnePercentFees);
+      expect(await contract.read.getMaximumPossibleWithdraw()).to.equal(0n);
+    });
+
+    it("should return 20 if the contract has 20 with no yield and no debt", async function () {
+      const { contract } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
+      expect(await contract.read.getMaximumPossibleWithdraw()).to.equal(20n);
+    });
+
+    it("should return 24 if the contract has 20 with 4 of yield and no debt", async function () {
+      const { contract } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
+      expect(await contract.read.getMaximumPossibleWithdraw()).to.equal(24n);
+    });
+
+    it("should return 0 if the contract has a debt of 50%", async function () {
+      const { contract, mockAavePool } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
+      const debtRate = toBigIntRate('0.50');
+      await mockAavePool.write.setFakeDebtRate([debtRate]);
+      expect(await contract.read.getMaximumPossibleWithdraw()).to.equal(0n);
+    });
+
+    it("should return 90 if the contract has 120 in total,and a debt of 10%", async function () {
+      const { contract, mockAavePool } = await loadFixture(deployFondationFixtureTwentyTwentyPercentFeesWithStakeAndYield);
+      const debtRate = toBigIntRate('0.10');
+      await mockAavePool.write.setFakeDebtRate([debtRate]);
+      expect(await contract.read.getMaximumPossibleWithdraw()).to.equal(toBigIntWBTC('90'));
+    });
+
+    it("should return 0 if the contract has 120 in total, and a debt of 40%", async function () {
+      const { contract, mockAavePool } = await loadFixture(deployFondationFixtureTwentyTwentyPercentFeesWithStakeAndYield);
+      const debtRate = toBigIntRate('0.40');
+      await mockAavePool.write.setFakeDebtRate([debtRate]);
+      // The minimumHealthFactor is 2 so the contract can only have a debt of 40% maximum
+      expect(await contract.read.getMaximumPossibleWithdraw()).to.equal(0n); 
+    });
+
+    it("should return 0 if the contract has 120 in total, and a debt of 80%", async function () {
+      const { contract, mockAavePool } = await loadFixture(deployFondationFixtureTwentyTwentyPercentFeesWithStakeAndYield);
+      const debtRate = toBigIntRate('0.80');
+      await mockAavePool.write.setFakeDebtRate([debtRate]);
+      // The minimumHealthFactor is 2 so the contract can only have a debt of 40% maximum
+      expect(await contract.read.getMaximumPossibleWithdraw()).to.equal(0n);
     });
 
   });

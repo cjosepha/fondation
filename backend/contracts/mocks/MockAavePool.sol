@@ -6,6 +6,7 @@ import {DataTypes} from "@aave/core-v3/contracts/protocol/libraries/types/DataTy
 import {IPoolAddressesProvider} from "@aave/core-v3/contracts/interfaces/IPoolAddressesProvider.sol";
 import {IAToken} from "@aave/core-v3/contracts/interfaces/IAToken.sol";
 import {MockERC20} from "./MockERC20.sol";
+import "hardhat/console.sol";
 
 contract MockAavePool is IPool {
 
@@ -33,23 +34,25 @@ contract MockAavePool is IPool {
     MockERC20 internal wBTC;
     MockERC20 internal USDC;
     uint256 internal btcPrice;
+    uint256 internal usdcPrice;
 
-    uint256 private fakeDebtPercent; // Percentage on 2 decimals
+    uint256 private fakeDebtRate; // 4 decimals
 
-    constructor(IAToken _aWBTC, MockERC20 _wBTC, MockERC20 _USDC, uint256 _btcPrice) {
+    constructor(IAToken _aWBTC, MockERC20 _wBTC, MockERC20 _USDC, uint256 _btcPrice, uint256 _usdcPrice) {
         aWBTC = _aWBTC;
         wBTC = _wBTC;
         USDC = _USDC;
         btcPrice = _btcPrice;
+        usdcPrice = _usdcPrice;
     }
 
     /**
-     * Sets the fake debt percentage for testing purposes.
-     * This function is used to simulate a specific debt percentage in the mock Aave pool.
-     * @param _debtPercent The fake debt percentage to be set on 2 decimals.
+     * Sets the fake debt rate for testing purposes.
+     * This function is used to simulate a specific debt rate in the mock Aave pool.
+     * @param _debtRate The fake debt rate to be set on 4 decimals.
      */
-    function setFakeDebtPercent(uint256 _debtPercent) external {
-        fakeDebtPercent = _debtPercent;
+    function setFakeDebtRate(uint256 _debtRate) external {
+        fakeDebtRate = _debtRate;
     }
     
     function mintUnbacked(
@@ -213,9 +216,9 @@ contract MockAavePool is IPool {
         currentLiquidationThreshold = 80 * 1e2;
         ltv = 70 * 1e2;
         totalCollateralBase = (wBTC.balanceOf(address(this)) * btcPrice) / 1e8; // result is already 8 decimals because wBTC has 8 decimals
-        totalDebtBase = (totalCollateralBase * fakeDebtPercent) / 1e4;
-        availableBorrowsBase = (totalCollateralBase * ltv) * 1e4;
-        healthFactor = totalDebtBase == 0 ? type(uint256).max : (totalCollateralBase * currentLiquidationThreshold) * 1e4 / totalDebtBase;
+        totalDebtBase = (totalCollateralBase * fakeDebtRate) / 1e4;
+        availableBorrowsBase = (USDC.balanceOf(address(this)) * 1e2 * usdcPrice) / 1e8; // USDC is 6 decimals so upscaling to 8 decimals before conversion to USD
+        healthFactor = totalDebtBase == 0 ? type(uint256).max : (totalCollateralBase * currentLiquidationThreshold) * 1e14 / totalDebtBase;
         return (
             totalCollateralBase,
             totalDebtBase,

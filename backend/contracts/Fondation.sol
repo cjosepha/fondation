@@ -23,6 +23,9 @@ contract Fondation is Ownable, IFondation {
     uint8 private constant WBTC_DECIMALS = 8;
     uint8 private constant STBTC_DECIMALS = 18;
     uint8 private constant AAVE_BASE_CURRENCY_DECIMALS = 8;
+    uint8 private constant EXCHANGE_RATE_DECIMALS = 9;
+    uint8 private constant HEALTH_FACTOR_DECIMALS = 18;
+    uint8 private constant RATE_DECIMALS = 4;
 
     // Tokens
     IERC20 private immutable wBTC; // 8 decimals
@@ -36,24 +39,24 @@ contract Fondation is Ownable, IFondation {
 
     IFondationStrategy public strategy;
 
-    uint256 private minimumHealthFactorBorrow = 4 * 1e18; // 18 decimals
-    uint256 private minimumHealthFactorWithdraw = 2 * 1e18; // 18 decimals
+    uint256 private minimumHealthFactorBorrow = 4 * (10 ** HEALTH_FACTOR_DECIMALS);
+    uint256 private minimumHealthFactorWithdraw = 2 * (10 ** HEALTH_FACTOR_DECIMALS);
 
-    uint public immutable feesRate; // 0.01 of % so 4 decimals
+    uint256 public immutable feesRate;
 
-    event Staked(uint amount, uint when); // Amount of wBTC that has been staked.
-    event Unstaked(uint amount, uint when); // Amount of staked wBTC that has been unstaked.
-    event FeesPaid(uint amount, uint when); // Amount of fees that has been paid to the owner of the contract.
-    event YieldAccrued(uint amount, uint when); // Amount of yield that has been accrued to the contract.
+    event Staked(uint256 amount, uint256 when); // Amount of wBTC that has been staked.
+    event Unstaked(uint256 amount, uint256 when); // Amount of staked wBTC that has been unstaked.
+    event FeesPaid(uint256 amount, uint256 when); // Amount of fees that has been paid to the owner of the contract.
+    event YieldAccrued(uint256 amount, uint256 when); // Amount of yield that has been accrued to the contract.
 
     /**
      * @dev Constructor that sets the fees rate for the contract.
      * @param _feesRate The initial fees rate to be set, expressed in 0.01 of %.
      */
-    constructor(uint _feesRate, IERC20 _wBTC, IAToken _aWBTC, IPool _aavePool, IAaveOracle _aaveOracle, IUniswapV2Router02 _swapRouter) {
+    constructor(uint256 _feesRate, IERC20 _wBTC, IAToken _aWBTC, IPool _aavePool, IAaveOracle _aaveOracle, IUniswapV2Router02 _swapRouter) {
         require(
-            _feesRate > 0 && _feesRate <= 10000,
-            "fees rate is expressed in 0.01 of % and should be between 0 and 10000"
+            _feesRate > 1 && _feesRate < 1 * (10 ** HEALTH_FACTOR_DECIMALS),
+            "fees rate should be between 0 and 9999"
         );
 
         feesRate = _feesRate;
@@ -68,11 +71,11 @@ contract Fondation is Ownable, IFondation {
     // User Facing Interface // 
     ///////////////////////////
     
-    function stake(uint _amount) external {
+    function stake(uint256 _amount) external {
         
         require(_amount > 0, "You must specify an amount greater than 0");
 
-        uint rate = exchangeRate();
+        uint256 rate = exchangeRate();
 
         // Transfert wBTC from user to Fondation
         wBTC.transferFrom(msg.sender, address(this), _amount);
@@ -82,7 +85,7 @@ contract Fondation is Ownable, IFondation {
         depositMaxAssetToStrategy();
 
         // Mint stBTC to user
-        uint stBTCAmount = _amount * 1e19 / rate;
+        uint256 stBTCAmount = shiftAmount(_amount, WBTC_DECIMALS, STBTC_DECIMALS) * (10 ** EXCHANGE_RATE_DECIMALS) / rate;
         stBTC.mint(msg.sender, stBTCAmount);
 
         emit Staked(_amount, block.timestamp);
@@ -93,19 +96,19 @@ contract Fondation is Ownable, IFondation {
      * The protocol will burn the stBTC tokens and return the equivalent amount of wBTC tokens to the caller, according to the current exchange rate.
      * @param _amount The amount of stBTC tokens to unstake on 18 decimals.
      */
-    function unstake(uint _amount) external {
+    function unstake(uint256 _amount) external {
         
         require(_amount > 0, "You must specify an amount greater than 0");
 
-        // Retrieving the exchange rate, before buring the stBTC
-        uint rate = exchangeRate();
+        // Retrieving the exchange rate on EXCHANGE_RATE_DECIMALS decimals, before burning the stBTC
+        uint256 rate = exchangeRate();
 
         // Burn stBTC from user
         // This will revert the transaction if the user doesn't have enough stBTC
         stBTC.burn(msg.sender, _amount);
 
         // Calculating the amount of wBTC to be withdrawn
-        uint wBTCAmount = (_amount * rate) / 1e19;
+        uint256 wBTCAmount = shiftAmount((_amount * rate) / (10 ** EXCHANGE_RATE_DECIMALS), STBTC_DECIMALS, WBTC_DECIMALS);
         
         require(wBTCAmount <= getMaximumPossibleWithdraw(), "Unstake amount exceeds maximum possible withdraw"); // TODO: Remove this requirement after implementing delayed unstake
 
@@ -123,24 +126,26 @@ contract Fondation is Ownable, IFondation {
      * Returns the current exchange rate.
      * @return The exchange rate as an unsigned integer expressed on 9 decimals.
      */
-    function exchangeRate() public view returns (uint) {
+    function exchangeRate() public view returns (uint256) {
 
-        uint stBTCSupply = stBTC.totalSupply();
-        uint aWBTCBalance = aWBTC.balanceOf(address(this));
+        uint256 stBTCSupply = stBTC.totalSupply();
+        uint256 aWBTCBalance = aWBTC.balanceOf(address(this));
 
         if (stBTCSupply == 0) {
             // The exchange rate should be 1.0
-            return 1e9;
+            return (10 ** EXCHANGE_RATE_DECIMALS);
         }
-
-        return aWBTCBalance * 1e19 / stBTCSupply; // = 10^( (18-8) + 9 ) = 10^(10+9) = 10^19
+        
+        uint256 rate = shiftAmount(aWBTCBalance, WBTC_DECIMALS, STBTC_DECIMALS) * (10 ** STBTC_DECIMALS) / stBTCSupply;
+        rate = shiftAmount(rate, STBTC_DECIMALS, EXCHANGE_RATE_DECIMALS);
+        return rate;
     }
 
-    function checkMaximumPossibleUnstake() external view returns (uint) {
+    function checkMaximumPossibleUnstake() external view returns (uint256) {
 
     }
 
-    function totalStaked() external view returns (uint) {
+    function totalStaked() external view returns (uint256) {
         return aWBTC.scaledBalanceOf(address(this));
     }
 
@@ -200,12 +205,12 @@ contract Fondation is Ownable, IFondation {
         
         // Request the IFondationStrategy to transfer to the Fondation contract the yield accrued from its deposits
         // The number of decimals is the same as the strategy asset
-        uint rawYield = strategy.retrieveYield();
+        uint256 rawYield = strategy.retrieveYield();
         
         if (rawYield > 0) {
 
-            uint fees = rawYield * feesRate / 1e4;
-            uint netYield = rawYield - fees;
+            uint256 fees = rawYield * feesRate / (10 ** RATE_DECIMALS);
+            uint256 netYield = rawYield - fees;
             IERC20 strategyAsset = getStrategyERC20();
             uint8 strategyAssetDecimals = strategy.getDecimals();
 
@@ -216,7 +221,7 @@ contract Fondation is Ownable, IFondation {
             uint256 wBTCPrice = aaveOracle.getAssetPrice(address(wBTC)) * 105 / 1e2;
 
             // Minimum amount of wBTC to receive from the swap
-            uint256 minWBTC = (netYield * 1e8 /* Aave base currency decimals */) / wBTCPrice;
+            uint256 minWBTC = (netYield * (10 ** AAVE_BASE_CURRENCY_DECIMALS)) / wBTCPrice;
             minWBTC = shiftAmount(minWBTC, strategyAssetDecimals, WBTC_DECIMALS);
 
             // Swap netYield amount strategy asset for wBTC on UniSwap
@@ -224,7 +229,7 @@ contract Fondation is Ownable, IFondation {
             address[] memory path = new address[](2);
             path[0] = address(strategyAsset);
             path[1] = address(wBTC);
-            uint[] memory amounts = swapRouter.swapExactTokensForTokens(
+            uint256[] memory amounts = swapRouter.swapExactTokensForTokens(
                 netYield,
                 minWBTC,
                 path,
@@ -260,7 +265,7 @@ contract Fondation is Ownable, IFondation {
         return address(strategy) != address(0);
     }
 
-    function supplyToPool(uint _wBTCAmount) private {
+    function supplyToPool(uint256 _wBTCAmount) private {
         // Approve Pool to spend on behalf of Fondation
         bool approved = wBTC.approve(address(aavePool), _wBTCAmount);
         require(approved, "wBTC approval failed");
@@ -274,7 +279,7 @@ contract Fondation is Ownable, IFondation {
         );
     }
 
-    function depositToStrategy(uint _strategyAssetAmount) private {
+    function depositToStrategy(uint256 _strategyAssetAmount) private {
         // Approve IFondationStrategy to spend on behalf of Fondation
         bool approved = getStrategyERC20().approve(address(strategy), _strategyAssetAmount);
         require(approved, "IFondationStrategy asset approval failed");
@@ -290,7 +295,7 @@ contract Fondation is Ownable, IFondation {
     function depositMaxAssetToStrategy() private {
         if (isStrategyInitialized()) {
             // Get the maximum possible amount of strategy asset that can be borrowed
-            uint maximumBorrow = getMaximumPossibleBorrow();
+            uint256 maximumBorrow = getMaximumPossibleBorrow();
 
             if (maximumBorrow > 0) {
                 // Borrow the maximum possible amount of strategy asset
@@ -304,7 +309,7 @@ contract Fondation is Ownable, IFondation {
             }
 
             // Retrieve strategy asset balance of Fondation contract
-            uint strategyAssetBalance = getStrategyERC20().balanceOf(address(this));
+            uint256 strategyAssetBalance = getStrategyERC20().balanceOf(address(this));
 
             if (strategyAssetBalance > 0) {
                 // Deposit strategy asset to the IFondationStrategy contract
@@ -330,7 +335,9 @@ contract Fondation is Ownable, IFondation {
         ) = aavePool.getUserAccountData(address(this));
 
         // Ensure the health factor is not already below the minimum threshold
-        require(healthFactor > minimumHealthFactorWithdraw, "Health factor is already below safe levels");
+        if (healthFactor <= minimumHealthFactorWithdraw) {
+            return 0;
+        }
 
         // Get the current wBTC underlying asset balance (aWBTC) of the Fondation contract
         uint256 aWBTCBalance = aWBTC.balanceOf(address(this));
@@ -341,10 +348,10 @@ contract Fondation is Ownable, IFondation {
         }
 
         // Minimum collateral that should be maintained to avoid liquidation (health factor = 1)
-        uint256 minimumCollateralBase = (totalDebtBase * 1e4) / currentLiquidationThreshold;
+        uint256 minimumCollateralBase = (totalDebtBase * (10 ** RATE_DECIMALS)) / currentLiquidationThreshold;
 
         // Adjust this minimum collateral to consider the actual mimimum health factor
-        minimumCollateralBase = (minimumCollateralBase * minimumHealthFactorWithdraw) / 1e18;
+        minimumCollateralBase = (minimumCollateralBase * minimumHealthFactorWithdraw) / (10 ** HEALTH_FACTOR_DECIMALS);
 
         if (minimumCollateralBase >= totalCollateralBase) {
             // No room left to withdraw while keeping HF >= minimumHealthFactorWithdraw
@@ -355,7 +362,7 @@ contract Fondation is Ownable, IFondation {
         uint256 wBTCPrice = aaveOracle.getAssetPrice(address(wBTC));
 
         // Convert collateral amount back to wBTC units
-        uint256 maxWithdrawAmount = ((totalCollateralBase - minimumCollateralBase) * 1e8) / wBTCPrice;
+        uint256 maxWithdrawAmount = ((totalCollateralBase - minimumCollateralBase) * (10 ** AAVE_BASE_CURRENCY_DECIMALS)) / wBTCPrice;
 
         return maxWithdrawAmount;
     }
@@ -377,7 +384,9 @@ contract Fondation is Ownable, IFondation {
         ) = aavePool.getUserAccountData(address(this));
 
         // Ensure the health factor is not already below the minimum threshold
-        require(healthFactor > minimumHealthFactorBorrow, "Health factor is already below safe levels");
+        if (healthFactor <= minimumHealthFactorBorrow) {
+            return 0;
+        }
 
         // If there is no collateral, nothing can be borrowed
         if (totalCollateralBase == 0) {
@@ -385,10 +394,10 @@ contract Fondation is Ownable, IFondation {
         }
 
         // Maximum debt allowed to avoid liquidation (health factor = 1)
-        uint256 maxDebtAllowed = (totalCollateralBase * currentLiquidationThreshold) / 1e4;
+        uint256 maxDebtAllowed = (totalCollateralBase * currentLiquidationThreshold) / (10 ** RATE_DECIMALS);
 
         // Adjust this maximum debt to consider the actual mimimum health factor
-        maxDebtAllowed = (maxDebtAllowed * 1e18) / minimumHealthFactorBorrow;
+        maxDebtAllowed = (maxDebtAllowed * (10 ** HEALTH_FACTOR_DECIMALS)) / minimumHealthFactorBorrow;
         
         if (maxDebtAllowed <= totalDebtBase) {
             // No room left to borrow while keeping HF >= minimumHealthFactorBorrow
@@ -397,16 +406,16 @@ contract Fondation is Ownable, IFondation {
 
         uint256 maxBorrow = maxDebtAllowed - totalDebtBase;
 
-        // Aave also enforces availableBorrowsBase, so we can't exceed that
+        // Aave also enforces availableBorrowsBase with a 5% security margin, so we can't exceed that
         if (maxBorrow > availableBorrowsBase) {
-            maxBorrow = availableBorrowsBase;
+            maxBorrow = (availableBorrowsBase * 95) / 1e2;
         }
 
         // Get the price of the strategy asset in USD on 8 decimals
         uint256 strategyAssetPrice = aaveOracle.getAssetPrice(strategy.getAsset());
 
         // Convert borrow amount to strategy asset amount
-        maxBorrow = (maxBorrow * 1e8) / strategyAssetPrice;
+        maxBorrow = (maxBorrow * (10 ** AAVE_BASE_CURRENCY_DECIMALS)) / strategyAssetPrice;
 
         // Convert borrow amount to strategy asset decimals
         maxBorrow = shiftAaveBaseCurrencyAmount(maxBorrow, strategy.getDecimals());
@@ -434,7 +443,7 @@ contract Fondation is Ownable, IFondation {
     function shiftAmount(uint256 _amount, uint8 _fromDecimals, uint8 _toDecimals) private pure returns (uint256) {
         if (_toDecimals > _fromDecimals) {
             return _amount * (10 ** (_toDecimals - _fromDecimals));
-        } else if (_toDecimals < 8) {
+        } else if (_toDecimals < _fromDecimals) {
             return _amount / (10 ** (_fromDecimals - _toDecimals));
         } else {
             return _amount;

@@ -22,6 +22,10 @@ export function toBigInt(stringNumber: string): bigint {
     return parseUnits(stringNumber, 18);
 }
 
+export function toBigIntRate(stringNumber: string): bigint {
+    return parseUnits(stringNumber, 4);
+}
+
 export function toBigIntUSDC(stringNumber: string): bigint {
     return parseUnits(stringNumber, 6);
 }
