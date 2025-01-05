@@ -12,7 +12,8 @@ import {
     fondation,
     aWBTC,
     formatWBTC,
-    formatExchangeRate
+    formatExchangeRate,
+    formatRate
 } from "@/utils/contract"
 import { useWriteContract, useReadContracts, useWaitForTransactionReceipt } from "wagmi"
 import { useToast } from "@/hooks/use-toast"
@@ -63,9 +64,13 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
             abi: fondation.abi,
             address: fondation.address,
             functionName: "totalStaked"
+        }, {
+            abi: fondation.abi,
+            address: fondation.address,
+            functionName: "feesRate"
         }]
     })
-    const [balance, exchangeRate, strategy, getMaximumPossibleWithdraw, totalStaked] = data || []
+    const [balance, exchangeRate, strategy, getMaximumPossibleWithdraw, totalStaked, feesRate] = data || []
 
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
       hash: hash
@@ -148,6 +153,7 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
                             <Label >Total wBTC locked in Fondation : { isLoading || !balance?.result ? "--" : formatWBTC(balance?.result) }</Label>
                             <Label >Maximum wBTC withdrawable : { isLoading || !getMaximumPossibleWithdraw?.result  ? "--" : formatWBTC(getMaximumPossibleWithdraw?.result) }</Label>
                             <Label >Exchange rate : { isLoading || !exchangeRate?.result  ? "--" : formatExchangeRate(exchangeRate?.result) }</Label>
+                            <Label >Fees : { isLoading || !feesRate?.result  ? "--" : formatRate(feesRate?.result) } %</Label>
                             <Label >Strategy contract address : { isLoading || !strategy?.result  ? "--" : getAddress(strategy?.result) }</Label>
                         </div>
                     </div>

@@ -8,3 +8,4 @@ export const EXCHANGE_RATE_DECIMALS = 9;
 export const STBTC_DECIMALS = 18;
 export const WBTC_DECIMALS = 8;
 export const USDC_DECIMALS = 6;
+export const RATE_DECIMALS = 4;

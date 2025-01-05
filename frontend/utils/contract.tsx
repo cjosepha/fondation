@@ -11,7 +11,8 @@ import {
     STBTC_DECIMALS,
     WBTC_DECIMALS,
     EXCHANGE_RATE_DECIMALS,
-    USDC_DECIMALS
+    USDC_DECIMALS,
+    RATE_DECIMALS
 } from "@/constants"
 import { parseUnits, formatUnits } from 'viem'
 import { useAccount, useReadContract } from "wagmi";
@@ -76,6 +77,10 @@ export const formatExchangeRate = (amount: bigint) => {
     return formatUnits(amount, EXCHANGE_RATE_DECIMALS)
 }
 
+export const formatRate = (amount: bigint) => {
+    return formatUnits(amount, RATE_DECIMALS)
+}
+
 export const formatFakeStrategyAsset = (amount: bigint) => {
     return formatUnits(amount, USDC_DECIMALS)
 }
@@ -97,4 +102,9 @@ export function useIsOwner() {
         isLoading,
         error,
     };
+}
+
+export interface FondationEvent {
+    amount: bigint
+    when: Date
 }

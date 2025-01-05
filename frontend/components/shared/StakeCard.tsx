@@ -24,7 +24,6 @@ import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { useAccount } from "wagmi";
-import { parse } from "path"
 
 const StakeCard = () => {
 
