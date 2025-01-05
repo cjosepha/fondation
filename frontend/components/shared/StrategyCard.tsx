@@ -115,7 +115,7 @@ const StrategyCard = () => {
     useEffect(() => {
         if (isConnected && !isLoading && allowance?.result) {
             setNeedApproval(
-                allowance?.result < parseUSDC(assetAmount)
+                (allowance?.result as bigint) < parseUSDC(assetAmount)
             );
         }
     }, [allowance, assetAmount]);
@@ -123,7 +123,7 @@ const StrategyCard = () => {
     useEffect(() => {
         if (isConnected && !isLoading && balance?.result) {
             setIsFundsSufficient(
-                balance?.result >= parseUSDC(assetAmount)
+                (balance?.result as bigint) >= parseUSDC(assetAmount)
             );
         }
     }, [balance, assetAmount]);
@@ -193,7 +193,7 @@ const StrategyCard = () => {
 
     const setMaxAssetAmount = () => {
         if (!balance?.result) { return }
-        setAssetAmount(formatFakeStrategyAsset(balance?.result))
+        setAssetAmount(formatFakeStrategyAsset(balance?.result as bigint))
     }
 
     return (
@@ -205,11 +205,11 @@ const StrategyCard = () => {
             <CardContent>
                 <div className="grid w-full items-center gap-4">
                     <div className="flex flex-col space-y-2">
-                        <Label >Asset : {isLoading || (getAsset?.result === undefined) ? "--" : getAddress(getAsset?.result)}</Label>
+                        <Label >Asset : {isLoading || (getAsset?.result === undefined) ? "--" : getAddress(getAsset?.result as string)}</Label>
                         <Label >Decimals : {isLoading || (getDecimals?.result === undefined) ? "--" : Number(getDecimals?.result)}</Label>
-                        <Label >Current yield : {isLoading || (getYieldAmount?.result === undefined) ? "--" : formatFakeStrategyAsset(getYieldAmount?.result)} USDC</Label>
-                        <Label >Contract balance : {isLoading || (balanceOf?.result === undefined) ? "--" : formatFakeStrategyAsset(balanceOf?.result)} USDC</Label>
-                        <Label >Your balance : {isLoading || (balance?.result === undefined) ? "--" : formatFakeStrategyAsset(balance?.result)} USDC</Label>
+                        <Label >Current yield : {isLoading || (getYieldAmount?.result === undefined) ? "--" : formatFakeStrategyAsset(getYieldAmount?.result as bigint)} USDC</Label>
+                        <Label >Contract balance : {isLoading || (balanceOf?.result === undefined) ? "--" : formatFakeStrategyAsset(balanceOf?.result as bigint)} USDC</Label>
+                        <Label >Your balance : {isLoading || (balance?.result === undefined) ? "--" : formatFakeStrategyAsset(balance?.result as bigint)} USDC</Label>
                     </div>
                     <div className="flex flex-row">
                         <Input value={assetAmount} onChange={(e) => setAssetAmount(e.target.value)} placeholder='Enter an amount' />

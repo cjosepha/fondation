@@ -13,7 +13,6 @@ import {
     formatFakeStrategyAsset,
     FondationEvent
 } from "@/utils/contract"
-import { useWatchContractEvent } from 'wagmi'
 import { useState, useEffect } from "react"
 import { Log, decodeEventLog, parseAbiItem } from 'viem'
 import { usePublicClient } from 'wagmi'
@@ -21,6 +20,7 @@ import { usePublicClient } from 'wagmi'
 const FeesPaidTable = () => {
 
     const [events, setEvents] = useState<FondationEvent[]>([])
+    const [refreshed, setRefreshed] = useState(false)
 
     const publicClient = usePublicClient()
 
@@ -55,18 +55,20 @@ const FeesPaidTable = () => {
         setEvents(feesPaidEvents);
     }
 
-    useWatchContractEvent({
+    /*useWatchContractEvent({
         address: fondation.address,
         abi: fondation.abi,
         eventName: 'FeesPaid',
         onLogs(logs) {
             addEventsFromLogs(logs)
         },
-    })
+    })*/
 
     useEffect(() => {
+
+        if (!publicClient || refreshed) { return }
+
         const fetchEvents = async () => {
-            if (!publicClient) { return }
             try {
                 // Query the logs for WorkflowStatusChange events
                 const logs = await publicClient.getLogs({
@@ -75,6 +77,8 @@ const FeesPaidTable = () => {
                     fromBlock: 7427529n, // From the first block
                     toBlock: "latest", // Up to the latest block
                 });
+
+                setRefreshed(true)
 
                 addEventsFromLogs(logs);
             } catch (error) {
