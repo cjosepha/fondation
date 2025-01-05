@@ -112,6 +112,7 @@ const StakeCard = () => {
     }, [isConnected, isLoading, isPending, isFundsSufficient, needApproval]);
 
     const expectedStBTCAmount = (_wBTCAmount : string) => {
+        if (!exchangeRate?.result) { return "--" }
         const result = parseWBTC(_wBTCAmount) * BigInt(10 ** EXCHANGE_RATE_DECIMALS) / exchangeRate?.result;
         return formatStBTC(result * BigInt(10 ** 10)); // 10 = 18 - 8
     }

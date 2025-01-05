@@ -15,12 +15,12 @@ import {
 } from "@/constants"
 import { parseUnits, formatUnits } from 'viem'
 import { useAccount, useReadContract } from "wagmi";
-import stBTCJson from "../../backend/artifacts/contracts/stBTC.sol/stBTC.json"
-import wBTCJson from "../../backend/artifacts/contracts/wBTC.sol/wBTC.json"
-import aWBTCJson from "../../backend/artifacts/contracts/aWBTC.sol/aWBTC.json"
-import fondationJson from "../../backend/artifacts/contracts/Fondation.sol/Fondation.json"
-import fakeStrategyJson from '../../backend/artifacts/contracts/FakeStrategy.sol/FakeStrategy.json'
-import USDCJson from '../../backend/artifacts/contracts/USDC.sol/USDC.json'
+import stBTCJson from "../../backend/ignition/deployments/chain-11155111/artifacts/FondationModule#stBTC.json"
+import wBTCJson from "../../backend/ignition/deployments/chain-11155111/artifacts/FondationModule#wBTC.json"
+import aWBTCJson from "../../backend/ignition/deployments/chain-11155111/artifacts/FondationModule#aWBTC.json"
+import fondationJson from "../../backend/ignition/deployments/chain-11155111/artifacts/FondationModule#Fondation.json"
+import fakeStrategyJson from '../../backend/ignition/deployments/chain-11155111/artifacts/FondationModule#FakeStrategy.json'
+import USDCJson from '../../backend/ignition/deployments/chain-11155111/artifacts/FondationModule#USDC.json'
 
 export const fondation = {
     address: getAddress(fondationAddress),

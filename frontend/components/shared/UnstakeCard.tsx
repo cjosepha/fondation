@@ -70,6 +70,7 @@ const UnstakeCard = () => {
     })
 
     const expectedWBTCAmount = (_stBTCAmount : string) => {
+        if (!exchangeRate?.result) { return "--" }
         const result = (parseStBTC(_stBTCAmount) * exchangeRate?.result) / BigInt(10 ** EXCHANGE_RATE_DECIMALS);
         return formatWBTC(result / BigInt(10 ** 10)); // 10 = 18 - 8
     }

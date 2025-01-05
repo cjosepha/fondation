@@ -17,15 +17,15 @@ import {
   QueryClientProvider,
   QueryClient,
 } from "@tanstack/react-query";
-//import { http } from 'wagmi';
+import { http } from 'wagmi';
 
 const config = getDefaultConfig({
   appName: 'Fondation',
   projectId: '846e8e9e05bdefbef626f4c8736d21ce',
   chains: [hardhat, sepolia],
-  /*transports: {
-    [sepolia.id]: http(process.env.RPC_SEPOLIA),
-  },*/
+  transports: {
+    [sepolia.id]: http("https://sepolia.infura.io/v3/44a639d76d6c43c9845c5e780f0e522a"),
+  },
   ssr: true,
 });
 
