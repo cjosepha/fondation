@@ -18,6 +18,7 @@ import { useWriteContract, useReadContracts, useWaitForTransactionReceipt } from
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { use, useEffect, useState } from "react"
+import { getAddress } from "viem"
 
 interface FondationCardProps {
     showAccrueYieldButton: boolean;
@@ -53,6 +54,10 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
         }, {
             abi: fondation.abi,
             address: fondation.address,
+            functionName: "strategy"
+        }, {
+            abi: fondation.abi,
+            address: fondation.address,
             functionName: "getMaximumPossibleWithdraw"
         }, {
             abi: fondation.abi,
@@ -60,7 +65,7 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
             functionName: "totalStaked"
         }]
     })
-    const [balance, exchangeRate, getMaximumPossibleWithdraw, totalStaked] = data || []
+    const [balance, exchangeRate, strategy, getMaximumPossibleWithdraw, totalStaked] = data || []
 
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
       hash: hash
@@ -145,6 +150,7 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
                             <Label >Current yield : { fondationYield } wBTC</Label>
                             <Label >Maximum wBTC withdrawable : { isLoading || !getMaximumPossibleWithdraw?.result  ? "--" : formatWBTC(getMaximumPossibleWithdraw?.result) }</Label>
                             <Label >Exchange rate : { isLoading || !exchangeRate?.result  ? "--" : formatExchangeRate(exchangeRate?.result) }</Label>
+                            <Label >Strategy contract address : { isLoading || !strategy?.result  ? "--" : getAddress(strategy?.result) }</Label>
                         </div>
                     </div>
                 </form>
