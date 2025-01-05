@@ -20,6 +20,7 @@ import { usePublicClient } from 'wagmi'
 const UnstakedTable = () => {
 
     const [events, setEvents] = useState<FondationEvent[]>([])
+    const [refreshed, setRefreshed] = useState(false)
 
     const publicClient = usePublicClient()
 
@@ -64,8 +65,10 @@ const UnstakedTable = () => {
     })*/
 
     useEffect(() => {
+        
+        if (!publicClient || refreshed) { return }
+
         const fetchEvents = async () => {
-            if (!publicClient) { return }
             try {
                 // Query the logs for WorkflowStatusChange events
                 const logs = await publicClient.getLogs({
@@ -74,6 +77,8 @@ const UnstakedTable = () => {
                     fromBlock: 7427529n, // From the first block
                     toBlock: "latest", // Up to the latest block
                 });
+
+                setRefreshed(true)
 
                 addEventsFromLogs(logs);
             } catch (error) {
@@ -84,7 +89,7 @@ const UnstakedTable = () => {
 
         fetchEvents()
 
-    }, [])
+    }, [publicClient])
 
     return (
         <Table>
