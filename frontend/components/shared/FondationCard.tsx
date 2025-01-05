@@ -61,14 +61,10 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
         }, {
             abi: fondation.abi,
             address: fondation.address,
-            functionName: "totalStaked"
-        }, {
-            abi: fondation.abi,
-            address: fondation.address,
             functionName: "feesRate"
         }]
     })
-    const [balance, exchangeRate, strategy, getMaximumPossibleWithdraw, totalStaked, feesRate] = data || []
+    const [balance, exchangeRate, strategy, getMaximumPossibleWithdraw, feesRate] = data || []
 
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
       hash: hash
