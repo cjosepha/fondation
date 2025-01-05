@@ -55,7 +55,7 @@ contract Fondation is Ownable, IFondation {
      */
     constructor(uint256 _feesRate, IERC20 _wBTC, IAToken _aWBTC, IPool _aavePool, IAaveOracle _aaveOracle, IUniswapV2Router02 _swapRouter) {
         require(
-            _feesRate > 1 && _feesRate < 1 * (10 ** HEALTH_FACTOR_DECIMALS),
+            _feesRate > 1 && _feesRate < 1 * (10 ** RATE_DECIMALS),
             "fees rate should be between 0 and 9999"
         );
 

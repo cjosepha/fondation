@@ -81,6 +81,10 @@ export const formatRate = (amount: bigint) => {
     return formatUnits(amount, RATE_DECIMALS)
 }
 
+export const formatPercent = (amount: bigint) => {
+    return formatUnits(amount, RATE_DECIMALS-2)
+}
+
 export const formatFakeStrategyAsset = (amount: bigint) => {
     return formatUnits(amount, USDC_DECIMALS)
 }
