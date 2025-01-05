@@ -54,14 +54,14 @@ const StakedTable = () => {
         setEvents(stakedEvents);
     }
 
-    useWatchContractEvent({
+    /*useWatchContractEvent({
         address: fondation.address,
         abi: fondation.abi,
         eventName: 'Staked',
         onLogs(logs) {
             addEventsFromLogs(logs)
         }
-    })
+    })*/
 
     useEffect(() => {
         const fetchEvents = async () => {
@@ -84,7 +84,7 @@ const StakedTable = () => {
 
         fetchEvents()
 
-    }, [publicClient])
+    }, [])
 
     return (
         <Table>

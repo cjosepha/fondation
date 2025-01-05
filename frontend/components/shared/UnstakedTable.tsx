@@ -54,14 +54,14 @@ const UnstakedTable = () => {
         setEvents(unstakedEvents);
     }
 
-    useWatchContractEvent({
+    /*useWatchContractEvent({
         address: fondation.address,
         abi: fondation.abi,
         eventName: 'Unstaked',
         onLogs(logs) {
             addEventsFromLogs(logs)
         },
-    })
+    })*/
 
     useEffect(() => {
         const fetchEvents = async () => {
@@ -84,7 +84,7 @@ const UnstakedTable = () => {
 
         fetchEvents()
 
-    }, [publicClient])
+    }, [])
 
     return (
         <Table>

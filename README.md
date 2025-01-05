@@ -15,6 +15,6 @@ The dApp is available at :
 ### Backend
 
 The following smart contracts are deployed on Sepolia testnet:
-  - Fondation : https://sepolia.etherscan.io/address/0x6dB3FF88FBf4C1103440EeA08CaA4F91f2054a9C#code
-  - FakeStrategy : https://sepolia.etherscan.io/address/0x6bb3D1BaaBd7AAb0B172d430A2E3A2C67E571cdA#code
-  - stBTC : https://sepolia.etherscan.io/address/0x280B5770C6902d8D2Db30dd9a5f23306ddc5240e#code
+  - Fondation : https://sepolia.etherscan.io/address/0xc90E62a2e0d63Fa423E74428dF288617b8EF2d49#code
+  - FakeStrategy : https://sepolia.etherscan.io/address/0xbdCA2CbC0B8b38652117a47D6407Fe1c9b447252#code
+  - stBTC : https://sepolia.etherscan.io/address/0x7C99E781454E6daA0038f96AB859D2AA49217882#code

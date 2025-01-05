@@ -55,14 +55,14 @@ const FeesPaidTable = () => {
         setEvents(feesPaidEvents);
     }
 
-    useWatchContractEvent({
+    /*useWatchContractEvent({
         address: fondation.address,
         abi: fondation.abi,
         eventName: 'FeesPaid',
         onLogs(logs) {
             addEventsFromLogs(logs)
         },
-    })
+    })*/
 
     useEffect(() => {
         const fetchEvents = async () => {
@@ -85,7 +85,7 @@ const FeesPaidTable = () => {
 
         fetchEvents()
 
-    }, [publicClient])
+    }, [])
 
     return (
         <Table>

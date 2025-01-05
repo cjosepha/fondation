@@ -54,14 +54,14 @@ const YieldAccruedTable = () => {
         setEvents(yieldAccruedEvents);
     }
 
-    useWatchContractEvent({
+    /*useWatchContractEvent({
         address: fondation.address,
         abi: fondation.abi,
         eventName: 'YieldAccrued',
         onLogs(logs) {
             addEventsFromLogs(logs)
         },
-    })
+    })*/
 
     useEffect(() => {
         const fetchEvents = async () => {
@@ -84,7 +84,7 @@ const YieldAccruedTable = () => {
 
         fetchEvents()
 
-    }, [publicClient])
+    }, [])
 
     return (
         <Table>

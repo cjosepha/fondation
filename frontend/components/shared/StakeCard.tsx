@@ -30,6 +30,8 @@ const StakeCard = () => {
     const { isConnected, address } = useAccount()
 
     const [wBTCAmount, setWBTCAmount] = useState("")
+    
+    const [currentAction, setCurrentAction] = useState("");
 
     const [needApproval, setNeedApproval] = useState(true);
 
@@ -122,6 +124,7 @@ const StakeCard = () => {
     }
 
     const stakeWBTC = () => {
+        setCurrentAction("Staking")
         writeContract({
             abi: fondation.abi,
             address: fondation.address,
@@ -131,6 +134,7 @@ const StakeCard = () => {
     }
 
     const approveWBTC = () => {
+        setCurrentAction("Approving")
         writeContract({
             abi: wBTC.abi,
             address: wBTC.address,
@@ -156,7 +160,7 @@ const StakeCard = () => {
         if (hash) {
             console.log("Submitted", hash)
             toast({
-                title: "Staking of wBTC submitted",
+                title: `${currentAction} of wBTC submitted`,
                 description: "Click to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
@@ -167,7 +171,7 @@ const StakeCard = () => {
         if (isConfirming) {
             console.log("Confirming", hash)
             toast({
-                title: "Staking of wBTC in progress...",
+                title: `${currentAction} of wBTC in progress...`,
                 description: "Click to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
@@ -178,7 +182,7 @@ const StakeCard = () => {
         if (isConfirmed) {
             console.log("Succeed", hash)
             toast({
-                title: "Staking of wBTC successful",
+                title: `${currentAction} of wBTC successful`,
                 description: "Click to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
@@ -213,11 +217,12 @@ const StakeCard = () => {
                             <Label className="ml-2 mt-auto mb-auto">wBTC</Label>
                             <Button className="ml-2 mt-auto mb-auto" onClick={setMaxWBTCAmount}>Max</Button>
                         </div>
-                        <div className="flex flex-row mt-auto mb-auto">
-                            { !isFundsSufficient ? <Label >Insufficient balance</Label> : null }
-                        </div>
                         <div className="flex flex-row justify-between mt-auto mb-auto">
-                            <Label >You will receive {(isLoading || !checkAmountValidity()) ? "--" : expectedStBTCAmount(wBTCAmount)} stBTC</Label>
+                            { isFundsSufficient ?
+                                <Label >You will receive {(isLoading || !checkAmountValidity()) ? "--" : expectedStBTCAmount(wBTCAmount)} stBTC</Label>
+                                :
+                                <Label >Insufficient balance</Label>
+                            }
                             <Label >1 wBTC = {isLoading ? "--" : expectedStBTCAmount('1.0')} stBTC</Label>
                         </div>
                     </div>

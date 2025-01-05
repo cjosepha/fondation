@@ -124,7 +124,7 @@ const UnstakeCard = () => {
     }, [isConnected, isLoading, isPending, isFundsSufficient]);
 
     useEffect(() => {
-        if (isConnected && !isLoading && getMaximumPossibleWithdraw?.result) {
+        if (isConnected && !isLoading && (getMaximumPossibleWithdraw?.result !== undefined)) {
             setIsAmountExceedUnstakable(
                 (getMaximumPossibleWithdraw?.result * BigInt(1e10)) < parseStBTC(stBTCAmount)
             )
