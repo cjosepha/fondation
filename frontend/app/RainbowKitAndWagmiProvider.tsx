@@ -10,7 +10,6 @@ import {
 } from '@rainbow-me/rainbowkit';
 import { WagmiProvider } from 'wagmi';
 import {
-  hardhat,
   sepolia
 } from 'wagmi/chains';
 import {
@@ -22,9 +21,8 @@ import { http } from 'wagmi';
 const config = getDefaultConfig({
   appName: 'Fondation',
   projectId: '846e8e9e05bdefbef626f4c8736d21ce',
-  chains: [hardhat, sepolia],
+  chains: [sepolia],
   transports: {
-    [hardhat.id]: http("http://127.0.0.1:8545"),
     [sepolia.id]: http("https://sepolia.infura.io/v3/44a639d76d6c43c9845c5e780f0e522a"),
   },
   ssr: true,
