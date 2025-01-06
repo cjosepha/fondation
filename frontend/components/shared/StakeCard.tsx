@@ -20,30 +20,29 @@ import {
     EXCHANGE_RATE_DECIMALS
 } from "@/constants"
 import { useWriteContract, useReadContracts, useWaitForTransactionReceipt } from "wagmi"
-import { useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { useAccount } from "wagmi";
+import { ProgressDialog } from "./ProgressDialog"
 
 const StakeCard = () => {
 
     const { isConnected, address } = useAccount()
 
     const [wBTCAmount, setWBTCAmount] = useState("")
-    
     const [currentAction, setCurrentAction] = useState("");
-
     const [needApproval, setNeedApproval] = useState(true);
-
     const [isApproveEnabled, setIsApproveEnabled] = useState(false);
-
     const [isStakeEnabled, setIsStakeEnabled] = useState(false);
-
     const [isFundsSufficient, setIsFundsSufficient] = useState(true);
+    const [progress, setProgress] = useState(0)
+    const [showProgressDialog, setShowProgressDialog] = useState(false)
+    const [progressTitle, setProgressTitle] = useState("")
 
     const { toast } = useToast()
 
-    const { data: hash, writeContract, isPending } = useWriteContract({
+    const { data: hash, writeContract, isPending, isError } = useWriteContract({
         mutation: {
             
         }
@@ -124,7 +123,11 @@ const StakeCard = () => {
     }
 
     const stakeWBTC = () => {
-        setCurrentAction("Staking")
+        const action = "Staking wBTC"
+        setCurrentAction(action)
+        setProgress(0)
+        setProgressTitle(action)
+        setShowProgressDialog(true)
         writeContract({
             abi: fondation.abi,
             address: fondation.address,
@@ -134,7 +137,11 @@ const StakeCard = () => {
     }
 
     const approveWBTC = () => {
-        setCurrentAction("Approving")
+        const action = "Approving wBTC"
+        setCurrentAction(action)
+        setProgress(0)
+        setProgressTitle(action)
+        setShowProgressDialog(true)
         writeContract({
             abi: wBTC.abi,
             address: wBTC.address,
@@ -157,37 +164,28 @@ const StakeCard = () => {
     }
 
     useEffect(() => {
-        if (hash) {
-            console.log("Submitted", hash)
-            toast({
-                title: `${currentAction} of wBTC submitted`,
-                description: "Click to view the transaction",
-                action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
-            })
-        }
-    }, [hash])
-
-    useEffect(() => {
         if (isConfirming) {
             console.log("Confirming", hash)
-            toast({
-                title: `${currentAction} of wBTC in progress...`,
-                description: "Click to view the transaction",
-                action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
-            })
+            setProgressTitle(`${currentAction} in progress`)
         }
     }, [isConfirming])
 
     useEffect(() => {
+        let timer : ReturnType<typeof setTimeout>
         if (isConfirmed) {
             console.log("Succeed", hash)
+            const progressTitle = `${currentAction} successful`
+            setProgressTitle(progressTitle)
+            setProgress(100)
             toast({
-                title: `${currentAction} of wBTC successful`,
-                description: "Click to view the transaction",
+                title: progressTitle,
+                description: "Open to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
+            timer = setTimeout(() => setShowProgressDialog(false), 1000)
             refetch()
         }
+        return () => clearTimeout(timer)
     }, [isConfirmed])
 
     useEffect(() => {
@@ -199,6 +197,12 @@ const StakeCard = () => {
             })
         }
     }, [error])
+
+    useEffect(() => {
+        if (isError) {
+            setShowProgressDialog(false)
+        }
+    }, [isError])
 
     return (
         <Card>
@@ -213,7 +217,7 @@ const StakeCard = () => {
                             <Label >Your balance : { (isLoading || !balance?.result) ? "--" : formatWBTC(balance?.result as bigint)} wBTC</Label>
                         </div>
                         <div className="flex flex-row mt-auto mb-auto">
-                            <Input value={wBTCAmount} onChange={(e) => setWBTCAmount(e.target.value)} placeholder="Enter the amount of wBTC to stake" />
+                            <Input type="number" value={wBTCAmount} onChange={(e) => setWBTCAmount(e.target.value)} placeholder="Enter the amount of wBTC to stake" />
                             <Label className="ml-2 mt-auto mb-auto">wBTC</Label>
                             <Button className="ml-2 mt-auto mb-auto" onClick={setMaxWBTCAmount}>Max</Button>
                         </div>
@@ -227,6 +231,7 @@ const StakeCard = () => {
                         </div>
                     </div>
                 </div>
+                { showProgressDialog ? <ProgressDialog title={progressTitle} progress={progress} hash={hash} /> : null }
             </CardContent>
             <CardFooter className="flex-auto space-x-2">
                 <Button disabled={!isApproveEnabled || !checkAmountValidity()} onClick={approveWBTC}>Approve</Button>
