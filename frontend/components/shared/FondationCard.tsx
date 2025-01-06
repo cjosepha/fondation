@@ -18,8 +18,9 @@ import {
 import { useWriteContract, useReadContracts, useWaitForTransactionReceipt } from "wagmi"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { getAddress } from "viem"
+import { ProgressDialog } from "./ProgressDialog"
 
 interface FondationCardProps {
     showAccrueYieldButton: boolean;
@@ -29,7 +30,11 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
 
     const { toast } = useToast()
 
-    const { data: hash, writeContract, isPending } = useWriteContract({
+    const [progress, setProgress] = useState(0)
+    const [showProgressDialog, setShowProgressDialog] = useState(false)
+    const [progressTitle, setProgressTitle] = useState("")
+
+    const { data: hash, writeContract, isPending, isError } = useWriteContract({
         mutation: {
             
         }
@@ -71,6 +76,9 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
     })
 
     const accueYield = () => {
+        setProgressTitle("Accrue Yield")
+        setProgress(0)
+        setShowProgressDialog(true)
         writeContract({
             abi: fondation.abi,
             address: fondation.address,
@@ -79,37 +87,28 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
     }
 
     useEffect(() => {
-        if (hash) {
-            console.log("Submitted", hash)
-            toast({
-                title: "Accrue Yield submitted",
-                description: "Click to view the transaction",
-                action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
-            })
-        }
-    }, [hash])
-
-    useEffect(() => {
         if (isConfirming) {
             console.log("Confirming", hash)
-            toast({
-                title: "Accrue Yield in progress...",
-                description: "Click to view the transaction",
-                action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
-            })
+            setProgressTitle(`Accrue Yield in progress`)
         }
     }, [isConfirming])
 
     useEffect(() => {
+        let timer : ReturnType<typeof setTimeout>
         if (isConfirmed) {
             console.log("Succeed", hash)
-            refetch()
+            const progressTitle = `Accrue Yield successful`
+            setProgressTitle(progressTitle)
+            setProgress(100)
             toast({
-                title: "Accrue Yield successful",
-                description: "Click to view the transaction",
+                title: progressTitle,
+                description: "Open to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
+            timer = setTimeout(() => setShowProgressDialog(false), 1000)
+            refetch()
         }
+        return () => clearTimeout(timer)
     }, [isConfirmed])
 
     useEffect(() => {
@@ -122,6 +121,12 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
         }
     }, [error])
 
+    useEffect(() => {
+        if (isError) {
+            setShowProgressDialog(false)
+        }
+    }, [isError])
+
     return (
         <Card>
             <CardHeader>
@@ -129,17 +134,16 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
                 <CardDescription>Current state of the Fondation contract</CardDescription>
             </CardHeader>
             <CardContent>
-                <form>
-                    <div className="grid w-full items-center gap-4">
-                        <div className="flex flex-col space-y-2">
-                            <Label >Total wBTC locked in Fondation : { isLoading || !balance?.result ? "--" : formatWBTC(balance?.result as bigint) }</Label>
-                            <Label >Maximum wBTC withdrawable : { isLoading || !getMaximumPossibleWithdraw?.result  ? "--" : formatWBTC(getMaximumPossibleWithdraw?.result as bigint) }</Label>
-                            <Label >Exchange rate : { isLoading || !exchangeRate?.result  ? "--" : formatExchangeRate(exchangeRate?.result as bigint) }</Label>
-                            <Label >Fees : { isLoading || !feesRate?.result  ? "--" : formatPercent(feesRate?.result as bigint) } %</Label>
-                            <Label >Strategy contract address : { isLoading || !strategy?.result  ? "--" : getAddress(strategy?.result as string) }</Label>
-                        </div>
+                <div className="grid w-full items-center gap-4">
+                    <div className="flex flex-col space-y-2">
+                        <Label >Total wBTC locked in Fondation : {isLoading || !balance?.result ? "--" : formatWBTC(balance?.result as bigint)}</Label>
+                        <Label >Maximum wBTC withdrawable : {isLoading || !getMaximumPossibleWithdraw?.result ? "--" : formatWBTC(getMaximumPossibleWithdraw?.result as bigint)}</Label>
+                        <Label >Exchange rate : {isLoading || !exchangeRate?.result ? "--" : formatExchangeRate(exchangeRate?.result as bigint)}</Label>
+                        <Label >Fees : {isLoading || !feesRate?.result ? "--" : formatPercent(feesRate?.result as bigint)} %</Label>
+                        <Label >Strategy contract address : {isLoading || !strategy?.result ? "--" : getAddress(strategy?.result as string)}</Label>
                     </div>
-                </form>
+                </div>
+                { showProgressDialog ? <ProgressDialog title={progressTitle} progress={progress} hash={hash} /> : null }
             </CardContent>
             <CardFooter className="flex-auto">
                 <div className="flex flex-row mt-auto mb-auto">

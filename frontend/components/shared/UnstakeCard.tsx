@@ -24,6 +24,7 @@ import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { useAccount } from "wagmi";
+import { ProgressDialog } from "./ProgressDialog"
 
 const UnstakeCard = () => {
 
@@ -33,10 +34,13 @@ const UnstakeCard = () => {
     const [isUnstakeEnabled, setIsUnstakeEnabled] = useState(false);
     const [isFundsSufficient, setIsFundsSufficient] = useState(true);
     const [isAmountExceedUnstakable, setIsAmountExceedUnstakable] = useState(true);
+    const [progress, setProgress] = useState(0)
+    const [showProgressDialog, setShowProgressDialog] = useState(false)
+    const [progressTitle, setProgressTitle] = useState("")
 
     const { toast } = useToast()
 
-    const { data: hash, writeContract, isPending } = useWriteContract({
+    const { data: hash, writeContract, isPending, isError } = useWriteContract({
         mutation: {
             
         }
@@ -76,6 +80,9 @@ const UnstakeCard = () => {
     }
 
     const unstakeStBTC = () => {
+        setProgress(0)
+        setProgressTitle("Unstaking stBTC")
+        setShowProgressDialog(true)
         writeContract({
             abi: fondation.abi,
             address: fondation.address,
@@ -132,37 +139,28 @@ const UnstakeCard = () => {
     }, [stBTCAmount, getMaximumPossibleWithdraw]);
 
     useEffect(() => {
-        if (hash) {
-            console.log("Submitted", hash)
-            toast({
-                title: "Unstaking of stBTC submitted",
-                description: "Click to view the transaction",
-                action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
-            })
-        }
-    }, [hash])
-
-    useEffect(() => {
         if (isConfirming) {
             console.log("Confirming", hash)
-            toast({
-                title: "Unstaking of stBTC in progress...",
-                description: "Click to view the transaction",
-                action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
-            })
+            setProgressTitle(`Unstaking stBTC in progress`)
         }
     }, [isConfirming])
 
     useEffect(() => {
+        let timer : ReturnType<typeof setTimeout>
         if (isConfirmed) {
             console.log("Succeed", hash)
+            const progressTitle = `Unstaking stBTC successful`
+            setProgressTitle(progressTitle)
+            setProgress(100)
             toast({
-                title: "Unstaking of stBTC successful",
-                description: "Click to view the transaction",
+                title: progressTitle,
+                description: "Open to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
+            timer = setTimeout(() => setShowProgressDialog(false), 1000)
             refetch()
         }
+        return () => clearTimeout(timer)
     }, [isConfirmed])
 
     useEffect(() => {
@@ -174,6 +172,12 @@ const UnstakeCard = () => {
             })
         }
     }, [error])
+
+    useEffect(() => {
+        if (isError) {
+            setShowProgressDialog(false)
+        }
+    }, [isError])
 
     return (
         <Card>
@@ -188,7 +192,7 @@ const UnstakeCard = () => {
                             <Label >Your balance : { (isLoading || !balance?.result) ? "--" : formatStBTC(balance?.result as bigint)} stBTC</Label>
                         </div>
                         <div className="flex flex-row mt-auto mb-auto">
-                            <Input value={stBTCAmount} onChange={(e) => setStBTCAmount(e.target.value)} placeholder="Enter the amount of stBTC to unstake" />
+                            <Input type="number" value={stBTCAmount} onChange={(e) => setStBTCAmount(e.target.value)} placeholder="Enter the amount of stBTC to unstake" />
                             <Label className="ml-2 mt-auto mb-auto">stBTC</Label>
                             <Button className="ml-2 mt-auto mb-auto" onClick={setMaxStBTCAmount}>Max</Button>
                         </div>
@@ -205,6 +209,7 @@ const UnstakeCard = () => {
                         </div>
                     </div>
                 </div>
+                { showProgressDialog ? <ProgressDialog title={progressTitle} progress={progress} hash={hash} /> : null }
             </CardContent>
             <CardFooter className="flex-auto">
                 <Button disabled={!isUnstakeEnabled || isAmountExceedUnstakable || !checkAmountValidity()} onClick={unstakeStBTC}>Unstake</Button>

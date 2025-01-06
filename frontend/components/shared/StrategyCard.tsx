@@ -21,6 +21,7 @@ import { ToastAction } from "@/components/ui/toast"
 import { useEffect, useState } from "react"
 import { getAddress } from "viem"
 import { useAccount } from "wagmi";
+import { ProgressDialog } from "./ProgressDialog"
 
 
 const StrategyCard = () => {
@@ -33,8 +34,12 @@ const StrategyCard = () => {
     const [isApproveEnabled, setIsApproveEnabled] = useState(false);
     const [isAddFakeYieldEnabled, setIsAddFakeYieldEnabled] = useState(false);
     const [isFundsSufficient, setIsFundsSufficient] = useState(true);
+    const [progress, setProgress] = useState(0)
+    const [showProgressDialog, setShowProgressDialog] = useState(false)
+    const [progressTitle, setProgressTitle] = useState("")
+    const [currentAction, setCurrentAction] = useState("");
 
-    const { data: hash, writeContract, isPending } = useWriteContract({
+    const { data: hash, writeContract, isPending, isError } = useWriteContract({
         mutation: {
             
         }
@@ -95,6 +100,11 @@ const StrategyCard = () => {
     }
 
     const addFakeYield = () => {
+        const action = "Adding Fake USDC Yield"
+        setCurrentAction(action)
+        setProgress(0)
+        setProgressTitle(action)
+        setShowProgressDialog(true)
         writeContract({
             abi: fakeStrategy.abi,
             address: fakeStrategy.address,
@@ -104,6 +114,11 @@ const StrategyCard = () => {
     }
 
     const approveUSDC = () => {
+        const action = "Approving USDC"
+        setCurrentAction(action)
+        setProgress(0)
+        setProgressTitle(action)
+        setShowProgressDialog(true)
         writeContract({
             abi: USDC.abi,
             address: USDC.address,
@@ -148,37 +163,28 @@ const StrategyCard = () => {
     }, [isConnected, isLoading, isPending, isFundsSufficient, needApproval]);
 
     useEffect(() => {
-        if (hash) {
-            console.log("Submitted", hash)
-            toast({
-                title: "Add Fake Yield submitted",
-                description: "Click to view the transaction",
-                action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
-            })
-        }
-    }, [hash])
-
-    useEffect(() => {
         if (isConfirming) {
             console.log("Confirming", hash)
-            toast({
-                title: "Add Fake Yield in progress...",
-                description: "Click to view the transaction",
-                action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
-            })
+            setProgressTitle(`${currentAction} in progress`)
         }
     }, [isConfirming])
 
     useEffect(() => {
+        let timer : ReturnType<typeof setTimeout>
         if (isConfirmed) {
             console.log("Succeed", hash)
-            refetch()
+            const progressTitle = `${currentAction} successful`
+            setProgressTitle(progressTitle)
+            setProgress(100)
             toast({
-                title: "Add Fake Yield successful",
-                description: "Click to view the transaction",
+                title: progressTitle,
+                description: "Open to view the transaction",
                 action: <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction>
             })
+            timer = setTimeout(() => setShowProgressDialog(false), 1000)
+            refetch()
         }
+        return () => clearTimeout(timer)
     }, [isConfirmed])
 
     useEffect(() => {
@@ -190,6 +196,12 @@ const StrategyCard = () => {
             })
         }
     }, [error])
+
+    useEffect(() => {
+        if (isError) {
+            setShowProgressDialog(false)
+        }
+    }, [isError])
 
     const setMaxAssetAmount = () => {
         if (!balance?.result) { return }
@@ -212,11 +224,12 @@ const StrategyCard = () => {
                         <Label >Your balance : {isLoading || (balance?.result === undefined) ? "--" : formatFakeStrategyAsset(balance?.result as bigint)} USDC</Label>
                     </div>
                     <div className="flex flex-row">
-                        <Input value={assetAmount} onChange={(e) => setAssetAmount(e.target.value)} placeholder='Enter an amount' />
+                        <Input type="number" value={assetAmount} onChange={(e) => setAssetAmount(e.target.value)} placeholder='Enter an amount' />
                         <Label className="ml-2 mt-auto mb-auto">USDC</Label>
                         <Button className="ml-2 mt-auto mb-auto" onClick={setMaxAssetAmount}>Max</Button>
                     </div>
                 </div>
+                { showProgressDialog ? <ProgressDialog title={progressTitle} progress={progress} hash={hash} /> : null }
             </CardContent>
             <CardFooter className="flex-auto space-x-2">
                 <Button disabled={!isApproveEnabled || !checkAmountValidity()} onClick={approveUSDC}>Approve</Button>
