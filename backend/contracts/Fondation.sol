@@ -78,8 +78,9 @@ contract Fondation is Ownable, IFondation {
         uint256 rate = exchangeRate();
 
         // Transfert wBTC from user to Fondation
-        wBTC.transferFrom(msg.sender, address(this), _amount);
-
+        bool result = wBTC.transferFrom(msg.sender, address(this), _amount);
+        require(result, "stake failed");
+        
         supplyToPool(_amount);
 
         depositMaxAssetToStrategy();
