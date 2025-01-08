@@ -82,7 +82,7 @@ const StrategyCard = () => {
     })
     const [getYieldAmount, getAsset, getDecimals, balance, allowance, balanceOf] = data || []
 
-    const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isTransationFailed } = useWaitForTransactionReceipt({
       hash: hash
     })
 
@@ -188,20 +188,21 @@ const StrategyCard = () => {
     }, [isConfirmed])
 
     useEffect(() => {
-        if (error) {
+        if (error || isTransationFailed) {
             console.log("Error", error)
             toast({
-                title: "Error",
-                description: error.message
+                title: (isTransationFailed? "Transaction failed" : "Error"),
+                description: (error? error.message : (isTransationFailed? "Open to view the transaction" : "")),
+                action: (hash ? <ToastAction onClick={() => window.open(`https://sepolia.etherscan.io/tx/${hash}`)} altText={"View on Etherscan"}>Open</ToastAction> : undefined)
             })
         }
-    }, [error])
+    }, [error, isTransationFailed])
 
     useEffect(() => {
-        if (isError) {
+        if (isError || isTransationFailed) {
             setShowProgressDialog(false)
         }
-    }, [isError])
+    }, [isError, isTransationFailed])
 
     const setMaxAssetAmount = () => {
         if (!balance?.result) { return }
