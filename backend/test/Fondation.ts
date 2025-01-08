@@ -365,6 +365,14 @@ describe("Fondation unit testing", function () {
       expect(await mockAavePool.read.suppliedReferralCode()).to.equal(0);
     });
 
+    it("should revert if the supply to the Pool contract fails", async function () {
+      const { contract, otherAccount, mockWBTC, mockAavePool } = await loadFixture(deployFondationFixtureOnePercentFees);
+      const amount = 100n;
+      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
+      await mockAavePool.write.setTransactionShouldFail([true]);
+      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("stake failed");
+    });
+
     it("should deposit the corresponding amount of strategy asset to the strategy contract (exchangeRate = 1.00, no stake)", async function () {
       const { contract, otherAccount, mockWBTC, mockUSDC, strategy } = await loadFixture(deployFondationFixtureOnePercentFees);
       const amount = toBigIntWBTC('1');
@@ -445,7 +453,6 @@ describe("Fondation unit testing", function () {
       const { contract, otherAccount, mockAavePool, mockWBTC } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
       await mockAavePool.write.setTransactionShouldFail([true]);
       const amountStBTC = toBigInt('0.000000100000000000');
-      const amountWBTC = toBigIntWBTC('0.0000001');
       await expect(contract.write.unstake([amountStBTC], { account: otherAccount.account.address })).to.be.rejectedWith("unstake failed");
     });
 
