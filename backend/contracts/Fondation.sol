@@ -114,12 +114,12 @@ contract Fondation is Ownable, IFondation {
         require(wBTCAmount <= getMaximumPossibleWithdraw(), "Unstake amount exceeds maximum possible withdraw"); // TODO: Remove this requirement after implementing delayed unstake
 
         // Withdraw wBTC from Aave Pool
-        aavePool.withdraw(
+        uint256 result = aavePool.withdraw(
             address(wBTC),
             wBTCAmount,
             msg.sender
         );
-
+        require(result == wBTCAmount, "unstake failed");
         emit Unstaked(wBTCAmount, block.timestamp);
     }
 
