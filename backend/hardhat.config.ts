@@ -22,7 +22,7 @@ const config: HardhatUserConfig = {
     sepolia : {
       url: `${RPC_URL}${RPC_API_KEY}` ,
       chainId: 11155111,
-      accounts: [`0x${PK_SEPOLIA_AAVE}`]
+      accounts: (PK_SEPOLIA_AAVE ? [`0x${PK_SEPOLIA_AAVE}`] : undefined)
     }
   },
   etherscan:{
