@@ -23,7 +23,7 @@ contract MockERC20 is IERC20 {
     mapping(address => uint256) internal fakeBalances;
     mapping(address => mapping(address => uint256)) internal fakeAllowances;
 
-    bool internal transactionShouldFail;
+    bool private transactionShouldFail;
 
     function addInterest(address account, uint256 amount) external {
         fakeBalances[account] += amount;

@@ -441,6 +441,14 @@ describe("Fondation unit testing", function () {
       expect(await mockAavePool.read.withdrawnAmount()).to.equal(amountWBTC);
     });
 
+    it("should revert if the AAVE withdraw is not equal to the expected amount", async function () {
+      const { contract, otherAccount, mockAavePool, mockWBTC } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
+      await mockAavePool.write.setTransactionShouldFail([true]);
+      const amountStBTC = toBigInt('0.000000100000000000');
+      const amountWBTC = toBigIntWBTC('0.0000001');
+      await expect(contract.write.unstake([amountStBTC], { account: otherAccount.account.address })).to.be.rejectedWith("unstake failed");
+    });
+
     it("should withdraw the correct amount of wBTC to the user (exchangeRate = 1.20, with stake of 20 satoshis, unstake of 15 stSatoshis)", async function () {
       const { contract, otherAccount, mockAavePool, mockWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield);
       expect(await contract.read.getMaximumPossibleWithdraw()).to.equal(24n);
