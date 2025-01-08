@@ -733,6 +733,16 @@ describe("Fondation unit testing", function () {
       expect(await mockAavePool.read.repaidAmount()).to.equal(toBigIntUSDC('820'));
     });
 
+    it("should revert if the repay to the AavePool fails", async function () {
+      const { contract, owner, strategy, mockUSDC, mockAavePool } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
+      expect(await strategy.read.getYieldAmount({ account: owner.account.address })).to.equal(toBigIntUSDC('20')); // Yield 20
+      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('820')); // First deposit on strategy is 800 + 20 of yield
+      expect(await mockUSDC.read.balanceOf([contract.address])).to.equal(0n);
+      const newStrategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
+      await mockAavePool.write.setTransactionShouldFail([true]);
+      await expect(contract.write.setStrategy([newStrategy.address], { account: owner.account.address })).to.be.rejectedWith("Repay failed");
+    });
+
   });
 
   describe("setStBTC", function () {
