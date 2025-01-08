@@ -337,6 +337,14 @@ describe("Fondation unit testing", function () {
       expect(await mockWBTC.read.balanceOf([otherAccount.account.address])).to.equal(0n);
     });
 
+    it("should revert if the transfer fails", async function () {
+      const { contract, otherAccount, mockWBTC } = await loadFixture(deployFondationFixtureOnePercentFees);
+      const amount = 100n;
+      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
+      await mockWBTC.write.setTransactionShouldFail([true]);
+      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("stake failed");
+    });
+
     it("should approve Pool contract to spend the staked amount of wBTC on behalf of the Fondation contract", async function () {
       const { contract, otherAccount, mockWBTC, mockAavePool } = await loadFixture(deployFondationFixtureOnePercentFees);
       const amount = 100n;
