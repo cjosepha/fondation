@@ -342,7 +342,7 @@ describe("Fondation unit testing", function () {
       const amount = 100n;
       await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await mockWBTC.write.setTransactionShouldFail([true]);
-      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("stake failed");
+      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("Transfer failed");
     });
 
     it("should approve Pool contract to spend the staked amount of wBTC on behalf of the Fondation contract", async function () {
@@ -370,7 +370,7 @@ describe("Fondation unit testing", function () {
       const amount = 100n;
       await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await mockAavePool.write.setTransactionShouldFail([true]);
-      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("stake failed");
+      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("Supply failed");
     });
 
     it("should deposit the corresponding amount of strategy asset to the strategy contract (exchangeRate = 1.00, no stake)", async function () {
@@ -453,7 +453,7 @@ describe("Fondation unit testing", function () {
       const { contract, otherAccount, mockAavePool, mockWBTC } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
       await mockAavePool.write.setTransactionShouldFail([true]);
       const amountStBTC = toBigInt('0.000000100000000000');
-      await expect(contract.write.unstake([amountStBTC], { account: otherAccount.account.address })).to.be.rejectedWith("unstake failed");
+      await expect(contract.write.unstake([amountStBTC], { account: otherAccount.account.address })).to.be.rejectedWith("Withdraw failed");
     });
 
     it("should withdraw the correct amount of wBTC to the user (exchangeRate = 1.20, with stake of 20 satoshis, unstake of 15 stSatoshis)", async function () {

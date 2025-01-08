@@ -79,7 +79,7 @@ contract Fondation is Ownable, IFondation {
 
         // Transfert wBTC from user to Fondation
         bool result = wBTC.transferFrom(msg.sender, address(this), _amount);
-        require(result, "stake failed");
+        require(result, "Transfer failed");
         
         supplyToPool(_amount);
 
@@ -119,7 +119,8 @@ contract Fondation is Ownable, IFondation {
             wBTCAmount,
             msg.sender
         );
-        require(result == wBTCAmount, "unstake failed");
+        require(result == wBTCAmount, "Withdraw failed");
+
         emit Unstaked(wBTCAmount, block.timestamp);
     }
 
@@ -271,6 +272,8 @@ contract Fondation is Ownable, IFondation {
         bool approved = wBTC.approve(address(aavePool), _wBTCAmount);
         require(approved, "wBTC approval failed");
 
+        uint256 aWBTCBalanceBeforeSupply = aWBTC.balanceOf(address(this));
+
         // Supply wBTC to Aave Pool
         aavePool.supply(
             address(wBTC),
@@ -278,6 +281,11 @@ contract Fondation is Ownable, IFondation {
             address(this),
             0
         );
+
+        uint256 aWBTCBalanceAfterSupply = aWBTC.balanceOf(address(this));
+
+        // Check the aWBTC balance has increased of exactly the amount supplied
+        require(aWBTCBalanceAfterSupply == (aWBTCBalanceBeforeSupply + _wBTCAmount), "Supply failed");
     }
 
     function depositToStrategy(uint256 _strategyAssetAmount) private {
