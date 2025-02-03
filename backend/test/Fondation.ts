@@ -337,6 +337,14 @@ describe("Fondation unit testing", function () {
       expect(await mockWBTC.read.balanceOf([otherAccount.account.address])).to.equal(0n);
     });
 
+    it("should revert if the transfer fails", async function () {
+      const { contract, otherAccount, mockWBTC } = await loadFixture(deployFondationFixtureOnePercentFees);
+      const amount = 100n;
+      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
+      await mockWBTC.write.setTransactionShouldFail([true]);
+      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("Transfer failed");
+    });
+
     it("should approve Pool contract to spend the staked amount of wBTC on behalf of the Fondation contract", async function () {
       const { contract, otherAccount, mockWBTC, mockAavePool } = await loadFixture(deployFondationFixtureOnePercentFees);
       const amount = 100n;
@@ -355,6 +363,14 @@ describe("Fondation unit testing", function () {
       expect((await mockAavePool.read.suppliedOnBehalfOf()).toLowerCase()).to.equal(contract.address);
       expect(await mockAavePool.read.suppliedAmount()).to.equal(amount);
       expect(await mockAavePool.read.suppliedReferralCode()).to.equal(0);
+    });
+
+    it("should revert if the supply to the Pool contract fails", async function () {
+      const { contract, otherAccount, mockWBTC, mockAavePool } = await loadFixture(deployFondationFixtureOnePercentFees);
+      const amount = 100n;
+      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
+      await mockAavePool.write.setTransactionShouldFail([true]);
+      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("Supply failed");
     });
 
     it("should deposit the corresponding amount of strategy asset to the strategy contract (exchangeRate = 1.00, no stake)", async function () {
@@ -431,6 +447,13 @@ describe("Fondation unit testing", function () {
       expect((await mockAavePool.read.withdrawnTo()).toLowerCase()).to.equal(otherAccount.account.address);
       expect((await mockAavePool.read.withdrawnAsset()).toLowerCase()).to.equal(mockWBTC.address);
       expect(await mockAavePool.read.withdrawnAmount()).to.equal(amountWBTC);
+    });
+
+    it("should revert if the AAVE withdraw is not equal to the expected amount", async function () {
+      const { contract, otherAccount, mockAavePool, mockWBTC } = await loadFixture(deployFondationFixtureOnePercentFeesWithStake);
+      await mockAavePool.write.setTransactionShouldFail([true]);
+      const amountStBTC = toBigInt('0.000000100000000000');
+      await expect(contract.write.unstake([amountStBTC], { account: otherAccount.account.address })).to.be.rejectedWith("Withdraw failed");
     });
 
     it("should withdraw the correct amount of wBTC to the user (exchangeRate = 1.20, with stake of 20 satoshis, unstake of 15 stSatoshis)", async function () {
@@ -708,6 +731,16 @@ describe("Fondation unit testing", function () {
       await contract.write.setStrategy([newStrategy.address], { account: owner.account.address });
       expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(0n);
       expect(await mockAavePool.read.repaidAmount()).to.equal(toBigIntUSDC('820'));
+    });
+
+    it("should revert if the repay to the AavePool fails", async function () {
+      const { contract, owner, strategy, mockUSDC, mockAavePool } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
+      expect(await strategy.read.getYieldAmount({ account: owner.account.address })).to.equal(toBigIntUSDC('20')); // Yield 20
+      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('820')); // First deposit on strategy is 800 + 20 of yield
+      expect(await mockUSDC.read.balanceOf([contract.address])).to.equal(0n);
+      const newStrategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
+      await mockAavePool.write.setTransactionShouldFail([true]);
+      await expect(contract.write.setStrategy([newStrategy.address], { account: owner.account.address })).to.be.rejectedWith("Repay failed");
     });
 
   });

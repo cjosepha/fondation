@@ -23,6 +23,8 @@ contract MockERC20 is IERC20 {
     mapping(address => uint256) internal fakeBalances;
     mapping(address => mapping(address => uint256)) internal fakeAllowances;
 
+    bool private transactionShouldFail;
+
     function addInterest(address account, uint256 amount) external {
         fakeBalances[account] += amount;
         fakeTotalSupply += amount;
@@ -39,6 +41,10 @@ contract MockERC20 is IERC20 {
     function setAllowance(address owner, address spender, uint256 amount) external {
         fakeAllowances[owner][spender] = amount;
     }
+
+    function setTransactionShouldFail(bool _shouldFail) external {
+        transactionShouldFail = _shouldFail;
+    }
     
     function totalSupply() external view override returns (uint256) {
         return fakeTotalSupply;
@@ -54,6 +60,7 @@ contract MockERC20 is IERC20 {
         address to,
         uint256 value
     ) external override returns (bool) {
+        if (transactionShouldFail) { return false; }
         uint256 balance = fakeBalances[msg.sender];
         require(
             balance >= value,
@@ -85,6 +92,7 @@ contract MockERC20 is IERC20 {
         address spender,
         uint256 value
     ) external override returns (bool) {
+        if (transactionShouldFail) { return false; }
         fakeAllowances[msg.sender][spender] = value;
         approvedSpender = spender;
         approvedAmount = value;
@@ -96,6 +104,7 @@ contract MockERC20 is IERC20 {
         address to,
         uint256 value
     ) external override returns (bool) {
+        if (transactionShouldFail) { return false; }
         require(fakeAllowances[from][msg.sender] >= value, "ERC20: spender not allowed for amount"); // Implementtaion of ERC20.transferFrom()
         require(fakeBalances[from] >= value, "ERC20: transfer amount exceeds balance"); // Implementtaion of ERC20.transferFrom()
         fakeBalances[from] -= value;

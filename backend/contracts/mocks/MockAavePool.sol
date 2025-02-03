@@ -37,6 +37,7 @@ contract MockAavePool is IPool {
     uint256 internal usdcPrice;
 
     uint256 private fakeDebtRate; // 4 decimals
+    bool private transactionShouldFail;
 
     constructor(IAToken _aWBTC, MockERC20 _wBTC, MockERC20 _USDC, uint256 _btcPrice, uint256 _usdcPrice) {
         aWBTC = _aWBTC;
@@ -53,6 +54,10 @@ contract MockAavePool is IPool {
      */
     function setFakeDebtRate(uint256 _debtRate) external {
         fakeDebtRate = _debtRate;
+    }
+
+    function setTransactionShouldFail(bool _shouldFail) external {
+        transactionShouldFail = _shouldFail;
     }
     
     function mintUnbacked(
@@ -79,6 +84,7 @@ contract MockAavePool is IPool {
         suppliedAmount = amount;
         suppliedOnBehalfOf = onBehalfOf;
         suppliedReferralCode = referralCode;
+        if (transactionShouldFail) { return; }
         wBTC.transferFrom(msg.sender, address(this), amount);
         aWBTC.mint(msg.sender, onBehalfOf, amount, 0);
     }
@@ -103,6 +109,7 @@ contract MockAavePool is IPool {
         withdrawnAsset = asset;
         withdrawnAmount = amount;
         withdrawnTo = to;
+        if (transactionShouldFail) { return 0; }
         aWBTC.burn(msg.sender, to, amount, 0);
         wBTC.transfer(to, amount);
         return amount;
@@ -121,6 +128,7 @@ contract MockAavePool is IPool {
         borrowedInterestrateMode = interestRateMode;
         borrowedReferralCode = referralCode;
         borrowedOnBehalfOf = onBehalfOf;
+        if (transactionShouldFail) { return; }
         USDC.transfer(msg.sender, amount);
     }
 
@@ -135,6 +143,7 @@ contract MockAavePool is IPool {
         repaidAmount = amount;
         repaidInterestrateMode = interestRateMode;
         repaidOnBehalfOf = onBehalfOf;
+        if (transactionShouldFail) { return 0; }
         USDC.transferFrom(msg.sender, address(this), amount);
         return amount;
     }

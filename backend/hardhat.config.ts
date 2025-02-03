@@ -22,17 +22,7 @@ const config: HardhatUserConfig = {
     sepolia : {
       url: `${RPC_URL}${RPC_API_KEY}` ,
       chainId: 11155111,
-      accounts: [`0x${PK_SEPOLIA_AAVE}`]
-    },
-    localhost: {
-      url: "http://127.0.0.1:8545",
-      chainId: 31337,
-    },
-    hardhat: {
-      forking: {
-        url: `${RPC_URL}${RPC_API_KEY}`,
-        blockNumber: 7427529
-      }
+      accounts: (PK_SEPOLIA_AAVE ? [`0x${PK_SEPOLIA_AAVE}`] : undefined)
     }
   },
   etherscan:{

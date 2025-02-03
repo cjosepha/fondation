@@ -78,8 +78,9 @@ contract Fondation is Ownable, IFondation {
         uint256 rate = exchangeRate();
 
         // Transfert wBTC from user to Fondation
-        wBTC.transferFrom(msg.sender, address(this), _amount);
-
+        bool result = wBTC.transferFrom(msg.sender, address(this), _amount);
+        require(result, "Transfer failed");
+        
         supplyToPool(_amount);
 
         depositMaxAssetToStrategy();
@@ -113,11 +114,12 @@ contract Fondation is Ownable, IFondation {
         require(wBTCAmount <= getMaximumPossibleWithdraw(), "Unstake amount exceeds maximum possible withdraw"); // TODO: Remove this requirement after implementing delayed unstake
 
         // Withdraw wBTC from Aave Pool
-        aavePool.withdraw(
+        uint256 result = aavePool.withdraw(
             address(wBTC),
             wBTCAmount,
             msg.sender
         );
+        require(result == wBTCAmount, "Withdraw failed");
 
         emit Unstaked(wBTCAmount, block.timestamp);
     }
@@ -270,6 +272,8 @@ contract Fondation is Ownable, IFondation {
         bool approved = wBTC.approve(address(aavePool), _wBTCAmount);
         require(approved, "wBTC approval failed");
 
+        uint256 aWBTCBalanceBeforeSupply = aWBTC.balanceOf(address(this));
+
         // Supply wBTC to Aave Pool
         aavePool.supply(
             address(wBTC),
@@ -277,6 +281,11 @@ contract Fondation is Ownable, IFondation {
             address(this),
             0
         );
+
+        uint256 aWBTCBalanceAfterSupply = aWBTC.balanceOf(address(this));
+
+        // Check the aWBTC balance has increased of exactly the amount supplied
+        require(aWBTCBalanceAfterSupply == (aWBTCBalanceBeforeSupply + _wBTCAmount), "Supply failed");
     }
 
     function depositToStrategy(uint256 _strategyAssetAmount) private {
