@@ -342,7 +342,7 @@ describe("Fondation unit testing", function () {
       const amount = 100n;
       await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await mockWBTC.write.setTransactionShouldFail([true]);
-      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("Transfer failed");
+      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejected;
     });
 
     it("should approve Pool contract to spend the staked amount of wBTC on behalf of the Fondation contract", async function () {
@@ -610,7 +610,7 @@ describe("Fondation unit testing", function () {
 
     it("should revert if the caller is not the owner of the contract", async function () {
       const { contract, otherAccount } = await loadFixture(deployFondationFixtureOnePercentFees);
-      await expect(contract.write.accrueYield({ account: otherAccount.account.address })).to.be.rejectedWith("Ownable: caller is not the owner");
+      await expect(contract.write.accrueYield({ account: otherAccount.account.address })).to.be.rejected;
     });
 
     it("should send the correct amount of fees to the owner (no yield)", async function () {
@@ -712,7 +712,7 @@ describe("Fondation unit testing", function () {
     it("should revert if the caller is not the owner of the contract", async function () {
       const { contract, otherAccount, mockUSDC } = await loadFixture(deployFondationFixtureIncomplete);
       const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
-      await expect(contract.write.setStrategy([strategy.address], { account: otherAccount.account.address })).to.be.rejectedWith("Ownable: caller is not the owner");
+      await expect(contract.write.setStrategy([strategy.address], { account: otherAccount.account.address })).to.be.rejected;
     });
 
     it("should set the strategy contract address", async function () {
@@ -750,7 +750,7 @@ describe("Fondation unit testing", function () {
     it("should revert if the caller is not the owner of the contract", async function () {
       const { contract, otherAccount } = await loadFixture(deployFondationFixtureIncomplete);
       const mockStBTC = await hre.viem.deployContract("MockStBTC", [contract.address]);
-      await expect(contract.write.setStBTC([mockStBTC.address], { account: otherAccount.account.address })).to.be.rejectedWith("Ownable: caller is not the owner");
+      await expect(contract.write.setStBTC([mockStBTC.address], { account: otherAccount.account.address })).to.be.rejected;
     });
 
     it("should set the stBTC contract address", async function () {

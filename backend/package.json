@@ -8,6 +8,7 @@
   "dependencies": {
     "@aave/core-v3": "^1.19.3",
     "@bgd-labs/aave-address-book": "^4.6.0",
+    "@openzeppelin/contracts": "^5.2.0",
     "@uniswap/v2-core": "^1.0.1",
     "@uniswap/v2-periphery": "^1.1.0-beta.0"
   }

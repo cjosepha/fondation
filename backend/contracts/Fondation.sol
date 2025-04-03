@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {Ownable} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/Ownable.sol";
-import {IERC20} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
 import {IStBTC} from "./stBTC.sol";
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 import {IAToken} from "@aave/core-v3/contracts/interfaces/IAToken.sol";
 import {IAaveOracle} from "@aave/core-v3/contracts/interfaces/IAaveOracle.sol";
 import {IFondationStrategy} from "./IFondationStrategy.sol";
 import {IUniswapV2Router02} from '@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol';
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IFondation {} // For testing purposes
 
@@ -17,7 +19,9 @@ interface IFondation {} // For testing purposes
  * The Fondation contract is the user facade of the Fondation system.
  * Users interact with this contract to stake and unstake wBTC.
  */
-contract Fondation is Ownable, IFondation {
+contract Fondation is Ownable, ReentrancyGuard, IFondation {
+
+    using SafeERC20 for IERC20;
 
     // Decimals
     uint8 private constant WBTC_DECIMALS = 8;
@@ -53,7 +57,8 @@ contract Fondation is Ownable, IFondation {
      * @dev Constructor that sets the fees rate for the contract.
      * @param _feesRate The initial fees rate to be set, expressed in 0.01 of %.
      */
-    constructor(uint256 _feesRate, IERC20 _wBTC, IAToken _aWBTC, IPool _aavePool, IAaveOracle _aaveOracle, IUniswapV2Router02 _swapRouter) {
+    constructor(uint256 _feesRate, IERC20 _wBTC, IAToken _aWBTC, IPool _aavePool, IAaveOracle _aaveOracle, IUniswapV2Router02 _swapRouter) Ownable(msg.sender) {
+        
         require(
             _feesRate > 1 && _feesRate < 1 * (10 ** RATE_DECIMALS),
             "fees rate should be between 0 and 9999"
@@ -71,15 +76,14 @@ contract Fondation is Ownable, IFondation {
     // User Facing Interface // 
     ///////////////////////////
     
-    function stake(uint256 _amount) external {
+    function stake(uint256 _amount) external nonReentrant {
         
         require(_amount > 0, "You must specify an amount greater than 0");
 
         uint256 rate = exchangeRate();
 
         // Transfert wBTC from user to Fondation
-        bool result = wBTC.transferFrom(msg.sender, address(this), _amount);
-        require(result, "Transfer failed");
+        wBTC.safeTransferFrom(msg.sender, address(this), _amount);
         
         supplyToPool(_amount);
 
@@ -97,7 +101,7 @@ contract Fondation is Ownable, IFondation {
      * The protocol will burn the stBTC tokens and return the equivalent amount of wBTC tokens to the caller, according to the current exchange rate.
      * @param _amount The amount of stBTC tokens to unstake on 18 decimals.
      */
-    function unstake(uint256 _amount) external {
+    function unstake(uint256 _amount) external nonReentrant {
         
         require(_amount > 0, "You must specify an amount greater than 0");
 
@@ -201,7 +205,7 @@ contract Fondation is Ownable, IFondation {
         stBTC = _stBTC;
     }
 
-    function accrueYield() external onlyOwner {
+    function accrueYield() external onlyOwner nonReentrant {
         
         require(isStrategyInitialized(), "A IFondationStrategy contract must be set");
         
@@ -217,7 +221,7 @@ contract Fondation is Ownable, IFondation {
             uint8 strategyAssetDecimals = strategy.getDecimals();
 
             // Transfer the fees to the owner of the contract
-            require(strategyAsset.transfer(msg.sender, fees), "Fees transfer failed");
+            strategyAsset.safeTransfer(msg.sender, fees);
 
             // Price of wBTC in USD with 5% margin up, 8 decimals
             uint256 wBTCPrice = aaveOracle.getAssetPrice(address(wBTC)) * 105 / 1e2;
