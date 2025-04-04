@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {Strings} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/Strings.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IUniswapV2Router02} from '@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol';
 import {MockERC20} from "./MockERC20.sol";
 import {MockAaveOracle} from "./MockAaveOracle.sol";

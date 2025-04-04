@@ -2,9 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {IStBTC} from "./stBTC.sol";
-import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
-import {IAToken} from "@aave/core-v3/contracts/interfaces/IAToken.sol";
-import {IAaveOracle} from "@aave/core-v3/contracts/interfaces/IAaveOracle.sol";
+import {IPool, IAToken, IAaveOracle} from "./Aave.sol";
 import {IFondationStrategy} from "./IFondationStrategy.sol";
 import {IUniswapV2Router02} from '@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol';
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";

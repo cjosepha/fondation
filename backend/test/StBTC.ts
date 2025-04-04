@@ -74,7 +74,7 @@ describe("stBTC unit testing", function () {
                 functionName: "burn",
                 args: [otherAccount.account.address, 100n],
                 account: fondation.address
-            })).to.be.rejectedWith("ERC20: burn amount exceeds balance");
+            })).to.be.rejected;
         });
 
     });

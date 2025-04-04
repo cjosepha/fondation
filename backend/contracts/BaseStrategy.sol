@@ -2,8 +2,8 @@
 pragma solidity ^0.8.28;
 
 import {IFondationStrategy} from "./IFondationStrategy.sol";
-import {Ownable} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/Ownable.sol";
-import {IERC20} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Fondation} from "./Fondation.sol";
 
 /**
@@ -22,7 +22,7 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
         _;
     }
 
-    constructor(Fondation _fondation, address _asset, uint8 _decimals) {
+    constructor(Fondation _fondation, address _asset, uint8 _decimals) Ownable(msg.sender) {
         fondation = _fondation;
         asset = _asset;
         decimals = _decimals;
