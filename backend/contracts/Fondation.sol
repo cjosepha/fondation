@@ -165,7 +165,7 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
      */
     function setStrategy(IFondationStrategy _newStrategy) external onlyOwner nonReentrant {
 
-        //require(address(_newStrategy) != address(0), "Invalid strategy address");
+        require(address(_newStrategy) != address(0), "Invalid strategy address");
         require(address(_newStrategy).code.length > 0, "Strategy must be a contract");
 
         try IERC165(address(_newStrategy)).supportsInterface(type(IFondationStrategy).interfaceId) returns (bool isSupported) {
@@ -291,9 +291,9 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
             require(repaid == repaidAmount, "Repay failed");
         }
 
-        //if (address(_newStrategy) != address(strategy)) {
+        if (address(_newStrategy) != address(strategy)) {
             emit StrategyChanged(address(strategy), address(_newStrategy), block.timestamp);
-        //}
+        }
         strategy = _newStrategy;
     }
 
