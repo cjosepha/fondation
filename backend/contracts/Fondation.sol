@@ -9,7 +9,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 interface IFondation {} // For testing purposes
 
 /**
@@ -164,8 +164,16 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
      * It's important to call accrueYield() on the current strategy prior to set a new strategy, to retrieve any pending yield and processes fees.
      */
     function setStrategy(IFondationStrategy _strategy) external onlyOwner {
-        
-        require(address(_strategy) != address(strategy), "Strategy must be different from the current one");
+
+        require(address(_strategy).code.length > 0, "Strategy must be a contract");
+
+        try IERC165(address(_strategy)).supportsInterface(type(IFondationStrategy).interfaceId) returns (bool isSupported) {
+            require(isSupported, "Strategy must implement IFondationStrategy");
+        } catch {
+            revert("Strategy must implement IFondationStrategy");
+        }
+
+        require(address(_strategy) != address(strategy), "Strategy must be different");
 
         if (address(strategy) != address(0)) {
             
@@ -189,6 +197,7 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
             require(repaid == repaidAmount, "Repay failed");
         }
 
+        emit StrategyChanged(address(strategy), address(_strategy), block.timestamp);
         strategy = _strategy;
 
         // Send the max strategy asset to the strategy contract

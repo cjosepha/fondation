@@ -3,7 +3,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import hre from "hardhat";
-import { getAddress } from "viem";
+import { getAddress, zeroAddress } from "viem";
 import {
   decodeEventFromLogs,
   setBalanceAndAllowance,
@@ -770,12 +770,12 @@ describe("Fondation unit testing", function () {
       const blockAfter = await publicClient.getBlock({ blockTag: "latest" });
       const after = blockAfter.timestamp; // Get the timestamp of the block
       
-      const event = decodeEventFromLogs(logs, 1, contract);
+      const event = decodeEventFromLogs(logs, 0, contract);
       
       expect(logs.length).to.equal(1);
       expect(event.eventName).to.equal("StrategyChanged");
-      expect(event.args.previousStrategy).to.equal(getAddress('0x0'));
-      expect(event.args.newStrategy).to.equal(strategy.address);
+      expect(event.args.previousStrategy).to.equal(zeroAddress);
+      expect(event.args.newStrategy.toLowerCase()).to.equal(strategy.address);
       expect(Number(event.args.when)).to.be.greaterThanOrEqual(Number(before));
       expect(Number(event.args.when)).to.be.lessThanOrEqual(Number(after));
     });
