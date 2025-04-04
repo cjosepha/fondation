@@ -6,6 +6,12 @@ import {IUniswapV2Router02} from '@uniswap/v2-periphery/contracts/interfaces/IUn
 import {MockERC20} from "./MockERC20.sol";
 import {MockAaveOracle} from "./MockAaveOracle.sol";
 
+/**
+ * @title MockUniSwapRouter
+ * @notice A mock implementation of the UniSwap Router interface.
+ * @dev This mock allows for testing of the UniSwap Router contract by providing a controlled environment for simulating
+ *      various scenarios and interactions with the UniSwap protocol.
+ */
 contract MockUniSwapRouter is IUniswapV2Router02 {
 
     using Strings for uint256;

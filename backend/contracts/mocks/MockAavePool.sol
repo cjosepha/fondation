@@ -5,6 +5,13 @@ import {IPool, IAToken} from "../Aave.sol";
 import {MockERC20} from "./MockERC20.sol";
 import "hardhat/console.sol";
 
+/**
+ * @title MockAavePool
+ * @notice A mock implementation of the Aave Pool interface.
+ * @dev This mock allows for testing of the Aave Pool contract by providing a controlled environment for simulating
+ *      various scenarios and interactions with the Aave protocol.
+ * @dev There is no need to use SafeERC20 because the mock is only used for testing purposes.
+ */
 contract MockAavePool is IPool {
 
     address public suppliedAsset;
@@ -152,5 +159,5 @@ contract MockAavePool is IPool {
             healthFactor
         );
     }
-    
+
 }

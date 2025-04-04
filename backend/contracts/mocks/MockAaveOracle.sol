@@ -5,6 +5,12 @@ import {IAaveOracle} from "../Aave.sol";
 import {MockAWBTC} from "./MockAWBTC.sol";
 import {MockERC20} from "./MockERC20.sol";
 
+/**
+ * @title MockAaveOracle
+ * @notice A mock implementation of the Aave Oracle interface.
+ * @dev This mock allows for testing of the Aave Oracle contract by providing a controlled environment for simulating
+ *      various scenarios and interactions with the Aave protocol.
+ */
 contract MockAaveOracle is IAaveOracle {
 
     mapping(address => uint256) private prices;

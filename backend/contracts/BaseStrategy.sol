@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import {IFondationStrategy} from "./IFondationStrategy.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Fondation} from "./Fondation.sol";
 
 /**
@@ -12,6 +13,8 @@ import {Fondation} from "./Fondation.sol";
  * Any IFondationStrategy implementation should inherit from this contract.
  */
 abstract contract BaseStrategy is Ownable, IFondationStrategy {
+
+    using SafeERC20 for IERC20;
     
     Fondation private fondation;
     address internal asset;
@@ -37,9 +40,7 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
         require(_amount > 0, "You must specify an amount greater than 0");
 
         // Transfer strategy asset from Fondation to BaseStrategy
-        bool result = IERC20(asset).transferFrom(msg.sender, address(this), _amount);
-
-        require(result, "deposit failed");
+        IERC20(asset).safeTransferFrom(msg.sender, address(this), _amount);
     }
 
     /**
@@ -53,9 +54,7 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
         uint256 amount = IERC20(asset).balanceOf(address(this));
 
         // Transfer all strategy asset to Fondation
-        bool result = IERC20(asset).transfer(msg.sender, amount);
-
-        require(result, "decomission failed");
+        IERC20(asset).safeTransfer(msg.sender, amount);
     }
 
     function getAsset() external view override returns (address) {

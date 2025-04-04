@@ -4,6 +4,12 @@ pragma solidity ^0.8.28;
 import {IAToken, IPool} from "../Aave.sol";
 import {MockERC20} from "./MockERC20.sol";
 
+/**
+ * @title MockAWBTC
+ * @notice A mock implementation of the Aave WBTC token interface.
+ * @dev This mock allows for testing of the Aave WBTC token contract by providing a controlled environment for simulating
+ *      various scenarios and interactions with the Aave protocol.
+ */
 contract MockAWBTC is MockERC20, IAToken {
 
     function scaledBalanceOf(
