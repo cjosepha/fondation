@@ -717,14 +717,25 @@ describe("Fondation unit testing", function () {
       await expect(contract.write.setStrategy([strategy.address], { account: otherAccount.account.address })).to.be.rejected;
     });
 
+    it("should revert if the argument is the zero address", async function () {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(contract.write.setStrategy([zeroAddress], { account: owner.account.address })).to.be.rejectedWith("Invalid strategy address");
+    });
+
     it("should revert if the argument is not a contract", async function () {
       const { contract, owner, otherAccount } = await loadFixture(deployFondationFixtureIncomplete);
       await expect(contract.write.setStrategy([otherAccount.account.address], { account: owner.account.address })).to.be.rejectedWith("Strategy must be a contract");
     });
 
-    it("should revert if the argument is a contract which does not implement IFondationStrategy", async function () {
+    it("should revert if the argument is a contract which does not implement IERC165", async function () {
       const { contract, owner, mockUSDC } = await loadFixture(deployFondationFixtureIncomplete);
-      await expect(contract.write.setStrategy([mockUSDC.address], { account: owner.account.address })).to.be.rejectedWith("Strategy must implement IFondationStrategy");
+      await expect(contract.write.setStrategy([mockUSDC.address], { account: owner.account.address })).to.be.rejectedWith("Strategy must implement IERC165");
+    });
+
+    it("should revert if the argument is a contract which does not implement IFondationStrategy", async function () {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const notAFondationStrategy = await hre.viem.deployContract("NotAFondationStrategy", []);
+      await expect(contract.write.setStrategy([notAFondationStrategy.address], { account: owner.account.address })).to.be.rejectedWith("Strategy must implement IFondationStrategy");
     });
 
     it("should set the strategy contract address", async function () {
@@ -734,7 +745,7 @@ describe("Fondation unit testing", function () {
       expect((await contract.read.strategy()).toLowerCase()).to.equal(strategy.address);
     });
 
-    it("should decommission the previous strategy when setting a new strategy", async function () {
+    it("should decommission the previous strategy", async function () {
       const { contract, owner, strategy, mockUSDC, mockAavePool } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
       expect(await strategy.read.getYieldAmount({ account: owner.account.address })).to.equal(toBigIntUSDC('20')); // Yield 20
       expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('820')); // First deposit on strategy is 800 + 20 of yield
@@ -755,7 +766,7 @@ describe("Fondation unit testing", function () {
       await expect(contract.write.setStrategy([newStrategy.address], { account: owner.account.address })).to.be.rejectedWith("Repay failed");
     });
 
-    it("should emit the StrategyChanged event", async function () {
+    it("should emit the StrategyChanged event when initializing the strategy", async function () {
       const { contract, owner, publicClient, mockUSDC } = await loadFixture(deployFondationFixtureIncomplete);
       
       // Get the current block before the transaction
@@ -776,6 +787,90 @@ describe("Fondation unit testing", function () {
       expect(event.eventName).to.equal("StrategyChanged");
       expect(event.args.previousStrategy).to.equal(zeroAddress);
       expect(event.args.newStrategy.toLowerCase()).to.equal(strategy.address);
+      expect(Number(event.args.when)).to.be.greaterThanOrEqual(Number(before));
+      expect(Number(event.args.when)).to.be.lessThanOrEqual(Number(after));
+    });
+
+    it("should emit the StrategyChanged event when replacing the strategy", async function () {
+      const { contract, owner, publicClient, mockUSDC, strategy } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
+      
+      // Get the current block before the transaction
+      const blockBefore = await publicClient.getBlock({ blockTag: "latest" });
+      const before = blockBefore.timestamp; // Get the timestamp of the block
+      
+      const newStrategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
+      const tx = await contract.write.setStrategy([newStrategy.address], { account: owner.account.address });
+      const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      
+      // Get the current block after the transaction
+      const blockAfter = await publicClient.getBlock({ blockTag: "latest" });
+      const after = blockAfter.timestamp; // Get the timestamp of the block
+      
+      const event = decodeEventFromLogs(logs, 0, contract);
+      
+      expect(logs.length).to.equal(1);
+      expect(event.eventName).to.equal("StrategyChanged");
+      expect(event.args.previousStrategy.toLowerCase()).to.equal(strategy.address);
+      expect(event.args.newStrategy.toLowerCase()).to.equal(newStrategy.address);
+      expect(Number(event.args.when)).to.be.greaterThanOrEqual(Number(before));
+      expect(Number(event.args.when)).to.be.lessThanOrEqual(Number(after));
+    });
+
+  });
+
+  describe("disableStrategy", function () {
+
+    it("should revert if the caller is not the owner of the contract", async function () {
+      const { contract, otherAccount } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
+      await expect(contract.write.disableStrategy({ account: otherAccount.account.address })).to.be.rejected;
+    });
+
+    it("should not emit any event if the strategy is not set", async function () {
+      const { contract, owner, publicClient } = await loadFixture(deployFondationFixtureIncomplete);
+      const tx = await contract.write.disableStrategy({ account: owner.account.address });
+      const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      expect(logs.length).to.equal(0);
+    });
+
+    it("should decommission the previous strategy", async function () {
+      const { contract, owner, strategy, mockUSDC, mockAavePool } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
+      expect(await strategy.read.getYieldAmount({ account: owner.account.address })).to.equal(toBigIntUSDC('20')); // Yield 20
+      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('820')); // First deposit on strategy is 800 + 20 of yield
+      expect(await mockUSDC.read.balanceOf([contract.address])).to.equal(0n);
+      await contract.write.disableStrategy({ account: owner.account.address });
+      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(0n);
+      expect(await mockAavePool.read.repaidAmount()).to.equal(toBigIntUSDC('820'));
+    });
+
+    it("should revert if the repay to the AavePool fails", async function () {
+      const { contract, owner, strategy, mockUSDC, mockAavePool } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
+      expect(await strategy.read.getYieldAmount({ account: owner.account.address })).to.equal(toBigIntUSDC('20')); // Yield 20
+      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('820')); // First deposit on strategy is 800 + 20 of yield
+      expect(await mockUSDC.read.balanceOf([contract.address])).to.equal(0n);
+      await mockAavePool.write.setTransactionShouldFail([true]);
+      await expect(contract.write.disableStrategy({ account: owner.account.address })).to.be.rejectedWith("Repay failed");
+    });
+    
+    it("should emit the StrategyChanged event when disabling strategy", async function () {
+      const { contract, owner, publicClient, mockUSDC, strategy } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
+      
+      // Get the current block before the transaction
+      const blockBefore = await publicClient.getBlock({ blockTag: "latest" });
+      const before = blockBefore.timestamp; // Get the timestamp of the block
+      
+      const tx = await contract.write.disableStrategy({ account: owner.account.address });
+      const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      
+      // Get the current block after the transaction
+      const blockAfter = await publicClient.getBlock({ blockTag: "latest" });
+      const after = blockAfter.timestamp; // Get the timestamp of the block
+      
+      const event = decodeEventFromLogs(logs, 0, contract);
+      
+      expect(logs.length).to.equal(1);
+      expect(event.eventName).to.equal("StrategyChanged");
+      expect(event.args.previousStrategy.toLowerCase()).to.equal(strategy.address);
+      expect(event.args.newStrategy).to.equal(zeroAddress);
       expect(Number(event.args.when)).to.be.greaterThanOrEqual(Number(before));
       expect(Number(event.args.when)).to.be.lessThanOrEqual(Number(after));
     });

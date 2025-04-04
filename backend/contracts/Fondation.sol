@@ -163,45 +163,30 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
      * If a new strategy is set, the current strategy will be decommissioned and the borrowed asset will be repaid.
      * It's important to call accrueYield() on the current strategy prior to set a new strategy, to retrieve any pending yield and processes fees.
      */
-    function setStrategy(IFondationStrategy _strategy) external onlyOwner {
+    function setStrategy(IFondationStrategy _newStrategy) external onlyOwner nonReentrant {
 
-        require(address(_strategy).code.length > 0, "Strategy must be a contract");
+        //require(address(_newStrategy) != address(0), "Invalid strategy address");
+        require(address(_newStrategy).code.length > 0, "Strategy must be a contract");
 
-        try IERC165(address(_strategy)).supportsInterface(type(IFondationStrategy).interfaceId) returns (bool isSupported) {
+        try IERC165(address(_newStrategy)).supportsInterface(type(IFondationStrategy).interfaceId) returns (bool isSupported) {
             require(isSupported, "Strategy must implement IFondationStrategy");
         } catch {
-            revert("Strategy must implement IFondationStrategy");
+            revert("Strategy must implement IERC165");
         }
 
-        require(address(_strategy) != address(strategy), "Strategy must be different");
+        require(address(_newStrategy) != address(strategy), "Strategy must be different");
 
-        if (address(strategy) != address(0)) {
-            
-            // Decomission the current strategy
-            strategy.decommission();
-            
-            // Repay the borrowed strategy asset
-            IERC20 strategyAsset = getStrategyERC20();
-            uint256 repaidAmount = strategyAsset.balanceOf(address(this));
-            
-            bool approved = strategyAsset.approve(address(aavePool), repaidAmount);
-            require(approved, "Strategy asset approval failed");
-            
-            uint256 repaid = aavePool.repay(
-                strategy.getAsset(),
-                repaidAmount,
-                2,
-                address(this)
-            );
-            
-            require(repaid == repaidAmount, "Repay failed");
-        }
-
-        emit StrategyChanged(address(strategy), address(_strategy), block.timestamp);
-        strategy = _strategy;
-
-        // Send the max strategy asset to the strategy contract
+        processStrategyChange(_newStrategy);
         depositMaxAssetToStrategy();
+    }
+
+    /**
+     * Disable the strategy contract.
+     * The current strategy will be decommissioned and the borrowed asset will be repaid.
+     * It's important to call accrueYield() on the current strategy prior to disable it, to retrieve any pending yield and processes fees.
+     */
+    function disableStrategy() external onlyOwner nonReentrant {
+        processStrategyChange(IFondationStrategy(address(0)));
     }
 
     /**
@@ -277,6 +262,39 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
      */
     function isStrategyInitialized() private view returns (bool) {
         return address(strategy) != address(0);
+    }
+
+    /**
+     * Process the strategy change
+     * @param _newStrategy The new strategy to be set
+     */
+    function processStrategyChange(IFondationStrategy _newStrategy) private {
+        if (isStrategyInitialized()) {
+            
+            // Decomission the current strategy
+            strategy.decommission();
+            
+            // Repay the borrowed strategy asset
+            IERC20 strategyAsset = getStrategyERC20();
+            uint256 repaidAmount = strategyAsset.balanceOf(address(this));
+            
+            bool approved = strategyAsset.approve(address(aavePool), repaidAmount);
+            require(approved, "Strategy asset approval failed");
+            
+            uint256 repaid = aavePool.repay(
+                strategy.getAsset(),
+                repaidAmount,
+                2,
+                address(this)
+            );
+            
+            require(repaid == repaidAmount, "Repay failed");
+        }
+
+        //if (address(_newStrategy) != address(strategy)) {
+            emit StrategyChanged(address(strategy), address(_newStrategy), block.timestamp);
+        //}
+        strategy = _newStrategy;
     }
 
     function supplyToPool(uint256 _wBTCAmount) private {
