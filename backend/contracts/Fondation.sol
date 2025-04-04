@@ -50,6 +50,7 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
     event Unstaked(uint256 amount, uint256 when); // Amount of staked wBTC that has been unstaked.
     event FeesPaid(uint256 amount, uint256 when); // Amount of fees that has been paid to the owner of the contract.
     event YieldAccrued(uint256 amount, uint256 when); // Amount of yield that has been accrued to the contract.
+    event StrategyChanged(address indexed previousStrategy, address indexed newStrategy, uint256 when); // A new strategy has been set.
 
     /**
      * @dev Constructor that sets the fees rate for the contract.
@@ -190,7 +191,7 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
 
         strategy = _strategy;
 
-        // Send the strategy asset to the strategy contract
+        // Send the max strategy asset to the strategy contract
         depositMaxAssetToStrategy();
     }
 

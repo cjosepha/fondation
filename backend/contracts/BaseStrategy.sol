@@ -31,6 +31,10 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
         decimals = _decimals;
     }
 
+    function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
+        return interfaceId == type(IFondationStrategy).interfaceId;
+    }
+
     /**
      * Deposits a specified amount into the strategy.
      * @param _amount The amount to be deposited.

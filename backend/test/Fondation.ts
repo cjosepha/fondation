@@ -31,7 +31,9 @@ describe("Fondation unit testing", function () {
     const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice, usdcPrice]);
     const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address]);
 
-    return { contract, owner, otherAccount, mockWBTC, mockAWBTC, mockAavePool, mockUSDC };
+    const publicClient = await hre.viem.getPublicClient();
+
+    return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockAavePool, mockUSDC };
   }
   
   async function deployFondationFixtureOnePercentFees() {
@@ -715,6 +717,16 @@ describe("Fondation unit testing", function () {
       await expect(contract.write.setStrategy([strategy.address], { account: otherAccount.account.address })).to.be.rejected;
     });
 
+    it("should revert if the argument is not a contract", async function () {
+      const { contract, owner, otherAccount } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(contract.write.setStrategy([otherAccount.account.address], { account: owner.account.address })).to.be.rejectedWith("Strategy must be a contract");
+    });
+
+    it("should revert if the argument is a contract which does not implement IFondationStrategy", async function () {
+      const { contract, owner, mockUSDC } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(contract.write.setStrategy([mockUSDC.address], { account: owner.account.address })).to.be.rejectedWith("Strategy must implement IFondationStrategy");
+    });
+
     it("should set the strategy contract address", async function () {
       const { contract, owner, mockUSDC } = await loadFixture(deployFondationFixtureIncomplete);
       const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
@@ -741,6 +753,31 @@ describe("Fondation unit testing", function () {
       const newStrategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
       await mockAavePool.write.setTransactionShouldFail([true]);
       await expect(contract.write.setStrategy([newStrategy.address], { account: owner.account.address })).to.be.rejectedWith("Repay failed");
+    });
+
+    it("should emit the StrategyChanged event", async function () {
+      const { contract, owner, publicClient, mockUSDC } = await loadFixture(deployFondationFixtureIncomplete);
+      
+      // Get the current block before the transaction
+      const blockBefore = await publicClient.getBlock({ blockTag: "latest" });
+      const before = blockBefore.timestamp; // Get the timestamp of the block
+      
+      const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
+      const tx = await contract.write.setStrategy([strategy.address], { account: owner.account.address });
+      const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      
+      // Get the current block after the transaction
+      const blockAfter = await publicClient.getBlock({ blockTag: "latest" });
+      const after = blockAfter.timestamp; // Get the timestamp of the block
+      
+      const event = decodeEventFromLogs(logs, 1, contract);
+      
+      expect(logs.length).to.equal(1);
+      expect(event.eventName).to.equal("StrategyChanged");
+      expect(event.args.previousStrategy).to.equal(getAddress('0x0'));
+      expect(event.args.newStrategy).to.equal(strategy.address);
+      expect(Number(event.args.when)).to.be.greaterThanOrEqual(Number(before));
+      expect(Number(event.args.when)).to.be.lessThanOrEqual(Number(after));
     });
 
   });
