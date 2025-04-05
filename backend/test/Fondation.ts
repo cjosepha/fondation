@@ -33,7 +33,7 @@ describe("Fondation unit testing", function () {
 
     const publicClient = await hre.viem.getPublicClient();
 
-    return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockAavePool, mockUSDC };
+    return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockAavePool, mockUSDC, mockAaveOracle, mockUniSwapRouter, fees };
   }
   
   async function deployFondationFixtureOnePercentFees() {
@@ -269,6 +269,41 @@ describe("Fondation unit testing", function () {
       const { contract, owner } = await loadFixture(deployFondationFixtureOnePercentFees);
       const address = getAddress(owner.account.address);
       expect(await contract.read.owner()).to.equal(address);
+    });
+
+    it("Should revert if wBTC address is 0", async function () {
+      const { mockAWBTC, mockAavePool, mockAaveOracle, mockUniSwapRouter, fees } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(hre.viem.deployContract("Fondation", [fees, zeroAddress, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address])).to.be.rejectedWith("Invalid wBTC address");
+    });
+
+    it("Should revert if aWBTC address is 0", async function () {
+      const { mockWBTC, mockAavePool, mockAaveOracle, mockUniSwapRouter, fees } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(hre.viem.deployContract("Fondation", [fees, mockWBTC.address, zeroAddress, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address])).to.be.rejectedWith("Invalid aWBTC address");
+    });
+
+    it("Should revert if aavePool address is 0", async function () {
+      const { mockWBTC, mockAWBTC, mockAaveOracle, mockUniSwapRouter, fees } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, zeroAddress, mockAaveOracle.address, mockUniSwapRouter.address])).to.be.rejectedWith("Invalid aavePool address");
+    }); 
+
+    it("Should revert if aaveOracle address is 0", async function () {
+      const { mockWBTC, mockAWBTC, mockAavePool, mockUniSwapRouter, fees } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, zeroAddress, mockUniSwapRouter.address])).to.be.rejectedWith("Invalid aaveOracle address");
+    });
+
+    it("Should revert if swapRouter address is 0", async function () {
+      const { mockWBTC, mockAWBTC, mockAavePool, mockAaveOracle, fees } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, zeroAddress])).to.be.rejectedWith("Invalid swapRouter address");
+    });
+
+    it("Should revert if fees rate is higher than 9999", async function () {
+      const { mockWBTC, mockAWBTC, mockAavePool, mockAaveOracle, mockUniSwapRouter } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(hre.viem.deployContract("Fondation", [10000, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address])).to.be.rejectedWith("fees rate should be between 1 and 9999");
+    });
+
+    it("Should revert if fees rate is lower than 1", async function () {
+      const { mockWBTC, mockAWBTC, mockAavePool, mockAaveOracle, mockUniSwapRouter } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(hre.viem.deployContract("Fondation", [0, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address])).to.be.rejectedWith("fees rate should be between 1 and 9999");
     });
 
     it("Should have nothing staked", async function () {
@@ -736,6 +771,13 @@ describe("Fondation unit testing", function () {
       const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
       const notAFondationStrategy = await hre.viem.deployContract("NotAFondationStrategy", []);
       await expect(contract.write.setStrategy([notAFondationStrategy.address], { account: owner.account.address })).to.be.rejectedWith("Strategy must implement IFondationStrategy");
+    });
+
+    it("should revert if the strategy is bound to another Fondation", async function () {
+      const { contract, owner, mockUSDC, mockWBTC, mockAWBTC, mockAavePool, mockAaveOracle, mockUniSwapRouter, fees } = await loadFixture(deployFondationFixtureIncomplete);
+      const anotherFondation = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address]);
+      const strategy = await hre.viem.deployContract("FakeStrategy", [anotherFondation.address, mockUSDC.address, 6]);
+      await expect(contract.write.setStrategy([strategy.address], { account: owner.account.address })).to.be.rejectedWith("Strategy is bound to another Fondation");
     });
 
     it("should set the strategy contract address", async function () {

@@ -6,6 +6,12 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 interface IFondationStrategy is IERC165 {
 
     /**
+     * Returns the Fondation contract address
+     * @return The Fondation contract address
+     */
+    function getFondation() external view returns (address);
+
+    /**
      * Returns to the caller the asset which is accepted for deposit, withdraw and yield retrieving
      * @return An IERC20 token address
      */

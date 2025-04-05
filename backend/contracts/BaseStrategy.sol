@@ -16,9 +16,9 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
 
     using SafeERC20 for IERC20;
     
-    Fondation private fondation;
-    address internal asset;
-    uint8 internal decimals;
+    Fondation private immutable fondation;
+    address private immutable asset;
+    uint8 private immutable decimals;
 
     modifier onlyFondation() {
         require(msg.sender == address(fondation), "Caller must be the Fondation contract");
@@ -26,6 +26,9 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
     }
 
     constructor(Fondation _fondation, address _asset, uint8 _decimals) Ownable(msg.sender) {
+        //require(address(_fondation) != address(0), "Invalid Fondation address");
+        //require(_asset != address(0), "Invalid asset address");
+        //require(_decimals > 0 && _decimals <= 18, "Invalid decimals");
         fondation = _fondation;
         asset = _asset;
         decimals = _decimals;
@@ -67,6 +70,10 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
 
     function getDecimals() external view override returns (uint8) {
         return decimals;
+    }
+
+    function getFondation() external view override returns (address) {
+        return address(fondation);
     }
 
 }

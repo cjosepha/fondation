@@ -12,15 +12,15 @@ interface IStBTC is IERC20 {
 }
 
 contract stBTC is ERC20, Ownable {
-
-    IFondation public fondation;
+    IFondation public immutable fondation;
 
     modifier onlyFondation() {
         require(msg.sender == address(fondation), "Caller must be the Fondation contract");
         _;
     }
-    
+
     constructor(IFondation _fondation) ERC20("Fondation Staked BTC", "stBTC") Ownable(msg.sender) {
+        //require(address(_fondation) != address(0), "Invalid Fondation address");
         fondation = _fondation;
     }
 

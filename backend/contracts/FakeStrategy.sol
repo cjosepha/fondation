@@ -43,7 +43,7 @@ contract FakeStrategy is BaseStrategy {
         uint256 yieldToSend = yield;
         if (yieldToSend > 0) {
             // Transfer fake yield to caller
-            IERC20(asset).safeTransfer(msg.sender, yieldToSend);
+            IERC20(this.getAsset()).safeTransfer(msg.sender, yieldToSend);
         }
         yield = 0;
         return yieldToSend;
@@ -52,7 +52,7 @@ contract FakeStrategy is BaseStrategy {
     function addFakeYield(uint256 _amount) external onlyOwner {
         require(_amount > 0, "You must specify an amount greater than 0");
         // Transfer fake yield from caller to FakeStrategy
-        IERC20(asset).safeTransferFrom(
+        IERC20(this.getAsset()).safeTransferFrom(
             msg.sender,
             address(this),
             _amount

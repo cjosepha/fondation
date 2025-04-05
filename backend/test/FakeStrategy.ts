@@ -7,6 +7,7 @@ import {
     setBalanceAndAllowance,
     toBigIntUSDC,
   } from "./utils";
+import { zeroAddress } from "viem";
 
 describe("FakeStrategy unit testing", function () {
 
@@ -35,6 +36,22 @@ describe("FakeStrategy unit testing", function () {
 
     describe("constructor", function () {
 
+        it("should revert if the Fondation address is 0", async function () {
+            const { mockUSDC } = await loadFixture(deployFondationFixture);
+            await expect(hre.viem.deployContract("FakeStrategy", [zeroAddress, mockUSDC.address, 2])).to.be.rejectedWith("Invalid Fondation address");
+        });
+
+        it("should revert if the asset address is 0", async function () {
+            const { fondation } = await loadFixture(deployFondationFixture);
+            await expect(hre.viem.deployContract("FakeStrategy", [fondation.address, zeroAddress, 2])).to.be.rejectedWith("Invalid asset address");
+        });
+
+        it("should revert if the decimals are not between 0 and 18", async function () {
+            const { fondation, mockUSDC } = await loadFixture(deployFondationFixture);
+            await expect(hre.viem.deployContract("FakeStrategy", [fondation.address, mockUSDC.address, 19])).to.be.rejectedWith("Invalid decimals");
+        });        
+        
+
         it("should set the correct owner", async function () {
             const { fondation, owner, mockUSDC } = await loadFixture(deployFondationFixture);
             const fakeStrategy = await hre.viem.deployContract("FakeStrategy", [fondation.address, mockUSDC.address, 2]);
@@ -51,6 +68,12 @@ describe("FakeStrategy unit testing", function () {
             const { fondation, mockUSDC } = await loadFixture(deployFondationFixture);
             const fakeStrategy = await hre.viem.deployContract("FakeStrategy", [fondation.address, mockUSDC.address, 2]);
             expect(await fakeStrategy.read.getDecimals()).to.equal(2);
+        });
+
+        it("should set the correct Fondation", async function () {
+            const { fondation, mockUSDC } = await loadFixture(deployFondationFixture);
+            const fakeStrategy = await hre.viem.deployContract("FakeStrategy", [fondation.address, mockUSDC.address, 2]);
+            expect((await fakeStrategy.read.getFondation()).toLocaleLowerCase()).to.equal(fondation.address);
         });
 
         it("should have yield to 0 at creation", async function () {
