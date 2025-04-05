@@ -20,7 +20,7 @@ contract stBTC is ERC20, Ownable {
     }
 
     constructor(IFondation _fondation) ERC20("Fondation Staked BTC", "stBTC") Ownable(msg.sender) {
-        //require(address(_fondation) != address(0), "Invalid Fondation address");
+        require(address(_fondation) != address(0), "Invalid Fondation address");
         fondation = _fondation;
     }
 

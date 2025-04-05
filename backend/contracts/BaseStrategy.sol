@@ -26,9 +26,9 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
     }
 
     constructor(Fondation _fondation, address _asset, uint8 _decimals) Ownable(msg.sender) {
-        //require(address(_fondation) != address(0), "Invalid Fondation address");
-        //require(_asset != address(0), "Invalid asset address");
-        //require(_decimals > 0 && _decimals <= 18, "Invalid decimals");
+        require(address(_fondation) != address(0), "Invalid Fondation address");
+        require(_asset != address(0), "Invalid asset address");
+        require(_decimals > 0 && _decimals <= 18, "Invalid decimals");
         fondation = _fondation;
         asset = _asset;
         decimals = _decimals;

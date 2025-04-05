@@ -58,11 +58,11 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
      */
     constructor(uint256 _feesRate, IERC20 _wBTC, IAToken _aWBTC, IPool _aavePool, IAaveOracle _aaveOracle, IUniswapV2Router02 _swapRouter) Ownable(msg.sender) {
         
-        //require(address(_wBTC) != address(0), "Invalid wBTC address");
-        //require(address(_aWBTC) != address(0), "Invalid aWBTC address");
-        //require(address(_aavePool) != address(0), "Invalid aavePool address");
-        //require(address(_aaveOracle) != address(0), "Invalid aaveOracle address");
-        //require(address(_swapRouter) != address(0), "Invalid swapRouter address");
+        require(address(_wBTC) != address(0), "Invalid wBTC address");
+        require(address(_aWBTC) != address(0), "Invalid aWBTC address");
+        require(address(_aavePool) != address(0), "Invalid aavePool address");
+        require(address(_aaveOracle) != address(0), "Invalid aaveOracle address");
+        require(address(_swapRouter) != address(0), "Invalid swapRouter address");
         require(
             _feesRate >= 1 && _feesRate < (10 ** RATE_DECIMALS),
             "fees rate should be between 1 and 9999"
@@ -181,10 +181,10 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
 
         require(address(_newStrategy) != address(strategy), "Strategy must be different");
 
-        //require(
-        //    _newStrategy.getFondation() == address(this),
-        //    "Strategy is bound to another Fondation"
-        //);
+        require(
+            _newStrategy.getFondation() == address(this),
+            "Strategy is bound to another Fondation"
+        );
 
         processStrategyChange(_newStrategy);
         depositMaxAssetToStrategy();
