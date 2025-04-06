@@ -943,118 +943,124 @@ describe("Fondation unit testing", function () {
     });
   });
 
-  describe.skip("various scenarios", function () {
+  describe("setBorrowHealthFactor", function() {
 
-    it("accrue yield then stake then accrue yield", async function () {
-      
-      const { contract, owner, otherAccount, mockWBTC, mockAWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_2);
-
-      // Owner takes the fees and accrues the yield on the contract
-      await contract.write.accrueYield({ account: owner.account.address });
-
-      // A user stakes 20 wBTC
-      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, 20n);
-      await contract.write.stake([20n], { account: otherAccount.account.address });
-
-      // Owner takes the fees and accrues the yield on the contract
-      await contract.write.accrueYield({ account: owner.account.address });
-
-      // Owner should have 2 aWBTC
-      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(2n);
-
-      // Total staked should be 40 wBTC
-      expect(await contract.read.totalStaked()).to.equal(40n);
-
+    it("should revert if the caller is not the owner of the contract", async function() {
+      const { contract, otherAccount } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('6');
+      await expect(contract.write.setBorrowMinHealthFactor([healthFactor], { account: otherAccount.account.address })).to.be.rejected;
     });
 
-    it("stake 100 wBTC, then revenues 20 aWBTC, then unstake 100 stBTC, then payout", async function () {
-
-      const { contract, owner, user1, mockStBTC, mockAWBTC, mockWBTC } = await loadFixture(deployFondationFixtureTwentyTwentyPercentFeesWithStakeAndYield);
-
-      // The owner should have 0 aWBTC
-      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(0n);
-
-      // The user should have 100 stBTC
-      expect(await mockStBTC.read.balanceOf([user1.account.address])).to.equal(toBigInt('100'));
-
-      // The contract should have 100+20 aWBTC
-      expect(await mockAWBTC.read.balanceOf([contract.address])).to.equal(toBigIntWBTC('120'));
-
-      // The exchange rate should be 1.20
-      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1.20'));
-
-      // Total supply of stBTC should be 100
-      expect(await mockStBTC.read.totalSupply()).to.equal(toBigInt('100'));
-
-      // Total supply of aWBTC should be 120
-      expect(await mockAWBTC.read.totalSupply()).to.equal(toBigIntWBTC('120'));
-      
-      // Unstake 100 stBTC (the whole user stake)
-      await contract.write.unstake([toBigInt('100')], { account: user1.account.address });
-      
-      // The contract totalStaked value should be 0 wBTC
-      expect(await contract.read.totalStaked()).to.equal(0n);
-
-      // The exchange rate should be 1.00
-      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1.0'));
-     
-      // The user should have 0 stBTC
-      expect(await mockStBTC.read.balanceOf([user1.account.address])).to.equal(0n);
-
-      // The user should have 100+16 wBTC
-      expect(await mockWBTC.read.balanceOf([user1.account.address])).to.equal(toBigIntWBTC('116'));
-
-      // Total supply of stBTC should be 0
-      expect(await mockStBTC.read.totalSupply()).to.equal(0n);
-
-      // The contract should only have the 4 aWBTC of the fees
-      expect(await mockAWBTC.read.balanceOf([contract.address])).to.equal(toBigIntWBTC('4'));
-
-      // The owner retrieves the fees
-      await contract.write.accrueYield({ account: owner.account.address });
-
-      // The owner should have 4 aWBTC
-      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(toBigIntWBTC('4'));
-
+    it("should revert if the health factor is less than 1", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('0.9');
+      await expect(contract.write.setBorrowMinHealthFactor([healthFactor], { account: owner.account.address })).to.be.rejectedWith("Health factor must be greater than 1.0");
     });
 
-    it("stake 100 wBTC, then revenues 20 aWTC, then stake 200 wBTC, then unstake the last stake", async function () {
-
-      const { contract, owner, user1, user2, mockStBTC, mockWBTC, mockAWBTC } = await loadFixture(deployFondationFixtureTwentyTwentyPercentFeesWithStakeAndYield);
-
-      // Stake 200 wBTC (user2)
-      await setBalanceAndAllowance(mockWBTC, user2.account.address, contract.address, toBigIntWBTC('200'));
-      await contract.write.stake([toBigIntWBTC('200')], { account: user2.account.address });
-
-      // The user2 should have 166.666666666666666666 stBTC
-      expect(await mockStBTC.read.balanceOf([user2.account.address])).to.equal(toBigInt('166.666666666666666666'));
-
-      // The user2 should have 0 wBTC
-      expect(await mockWBTC.read.balanceOf([user2.account.address])).to.equal(0n);
-
-      // The exchange rate should be 1.20
-      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1.20'));
-
-      // Unstake 172.4137931 stBTC (user2)
-      await contract.write.unstake([parseUnits('172.4137931', 8)], { account: user2.account.address });
-
-      // The user2 should have 0 stBTC
-      expect(await mockStBTC.read.balanceOf([user2.account.address])).to.equal(0n);
-
-      // The user2 should have 200 wBTC
-      expect(await mockWBTC.read.balanceOf([user2.account.address])).to.equal(toBigIntWBTC('199.99999999')); // ERROR : not exactly 200 wBTC
-
-      // Total supply of stBTC should be 100
-      expect(await mockStBTC.read.totalSupply()).to.equal(toBigInt('100'));
-
-      // Total supply of aWBTC should be 120
-      expect(await mockAWBTC.read.totalSupply()).to.equal(toBigIntWBTC('120.00000001'));
-
-      // The exchange rate should be 1.16
-      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1.20'));
-      
+    it("should revert if the health factor is 1", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('1');
+      await expect(contract.write.setBorrowMinHealthFactor([healthFactor], { account: owner.account.address })).to.be.rejectedWith("Health factor must be greater than 1.0");
     });
 
+    it("should revert if the borrow health factor is less than twice the withdraw health factor", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('3');
+      await expect(contract.write.setBorrowMinHealthFactor([healthFactor], { account: owner.account.address })).to.be.rejectedWith("The minimum borrow HF must be at least twice the minimum withdraw HF");
+    });
+    
+    it("should set the borrow health factor", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('6');
+      await contract.write.setBorrowMinHealthFactor([healthFactor], { account: owner.account.address });
+      expect(await contract.read.minimumHealthFactorBorrow()).to.equal(healthFactor);
+    });
+
+    it("should emit the BorrowHealthFactorUpdated event", async function() {
+      const { contract, owner, publicClient } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('6');
+      const tx = await contract.write.setBorrowMinHealthFactor([healthFactor], { account: owner.account.address });
+        const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      const event = decodeEventFromLogs(logs, 0, contract);
+      expect(logs.length).to.equal(1);
+      expect(event.eventName).to.equal("BorrowHealthFactorUpdated");
+      expect(event.args.oldValue).to.equal(toBigInt('4'));
+      expect(event.args.newValue).to.equal(healthFactor);
+    });
+    
+  });
+
+  describe("setWithdrawHealthFactor", function() {
+
+    it("should revert if the caller is not the owner of the contract", async function() {
+      const { contract, otherAccount } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('1.8');
+      await expect(contract.write.setWithdrawMinHealthFactor([healthFactor], { account: otherAccount.account.address })).to.be.rejected;
+    });
+
+    it("should revert if the health factor is less than 1", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('0.9');
+      await expect(contract.write.setWithdrawMinHealthFactor([healthFactor], { account: owner.account.address })).to.be.rejectedWith("Health factor must be greater than 1.0");
+    });
+
+    it("should revert if the health factor is 1", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('1');
+      await expect(contract.write.setWithdrawMinHealthFactor([healthFactor], { account: owner.account.address })).to.be.rejectedWith("Health factor must be greater than 1.0");
+    });
+
+    it("should revert if the withdraw health factor is more than half the borrow health factor", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('3');
+      await expect(contract.write.setWithdrawMinHealthFactor([healthFactor], { account: owner.account.address })).to.be.rejectedWith("The minimum withdraw HF must be at most half the minimum borrow HF");
+    });
+
+    it("should set the withdraw health factor", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('1.8');
+      await contract.write.setWithdrawMinHealthFactor([healthFactor], { account: owner.account.address });
+      expect(await contract.read.minimumHealthFactorWithdraw()).to.equal(healthFactor);
+    });
+
+    it("should emit the WithdrawHealthFactorUpdated event", async function() {
+      const { contract, owner, publicClient } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('1.8');
+      const tx = await contract.write.setWithdrawMinHealthFactor([healthFactor], { account: owner.account.address });
+      const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      const event = decodeEventFromLogs(logs, 0, contract);
+      expect(logs.length).to.equal(1);
+      expect(event.eventName).to.equal("WithdrawHealthFactorUpdated");
+      expect(event.args.oldValue).to.equal(toBigInt('2'));
+      expect(event.args.newValue).to.equal(healthFactor);
+    }); 
+
+  });
+
+  describe("setSwapMaxSlippage", function() {
+
+    it("should revert if the caller is not the owner of the contract", async function() {
+      const { contract, otherAccount } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(contract.write.setSwapMaxSlippagePercent([1n], { account: otherAccount.account.address })).to.be.rejected;
+    });
+
+    it("should set the swap max slippage", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      await contract.write.setSwapMaxSlippagePercent([1n], { account: owner.account.address });
+      expect(await contract.read.swapMaxSlippagePercent()).to.equal(1n);
+    });
+
+    it("should emit the SwapMaxSlippagePercentUpdated event", async function() {
+      const { contract, owner, publicClient } = await loadFixture(deployFondationFixtureIncomplete);
+      const slippagePercent = 1n;
+      const tx = await contract.write.setSwapMaxSlippagePercent([slippagePercent], { account: owner.account.address });
+      const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      const event = decodeEventFromLogs(logs, 0, contract);
+      expect(logs.length).to.equal(1);
+      expect(event.eventName).to.equal("SwapMaxSlippagePercentUpdated");
+      expect(event.args.oldValue).to.equal(5n);
+      expect(event.args.newValue).to.equal(slippagePercent);
+    });
   });
 
 });

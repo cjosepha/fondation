@@ -41,9 +41,9 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
 
     IFondationStrategy public strategy;
 
-    uint256 private minimumHealthFactorBorrow = 4 * (10 ** HEALTH_FACTOR_DECIMALS);
-    uint256 private minimumHealthFactorWithdraw = 2 * (10 ** HEALTH_FACTOR_DECIMALS);
-    uint256 private swapMaxSlippagePercent = 5;
+    uint256 public minimumHealthFactorBorrow = 4 * (10 ** HEALTH_FACTOR_DECIMALS);
+    uint256 public minimumHealthFactorWithdraw = 2 * (10 ** HEALTH_FACTOR_DECIMALS);
+    uint256 public swapMaxSlippagePercent = 5;
 
     uint256 public immutable feesRate;
 
@@ -52,6 +52,9 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
     event FeesPaid(uint256 amount, uint256 when); // Amount of fees that has been paid to the owner of the contract.
     event YieldAccrued(uint256 amount, uint256 when); // Amount of yield that has been accrued to the contract.
     event StrategyChanged(address indexed previousStrategy, address indexed newStrategy, uint256 when); // A new strategy has been set.
+    event BorrowHealthFactorUpdated(uint256 oldValue, uint256 newValue, uint256 when); // The borrow health factor has been updated.
+    event WithdrawHealthFactorUpdated(uint256 oldValue, uint256 newValue, uint256 when); // The withdraw health factor has been updated.
+    event SwapMaxSlippagePercentUpdated(uint256 oldValue, uint256 newValue, uint256 when); // The swap max slippage percent has been updated.
 
     /**
      * @dev Constructor that sets the fees rate for the contract.
@@ -256,21 +259,17 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
         }
     }
 
-    event BorrowHealthFactorUpdated(uint256 oldValue, uint256 newValue, uint256 when);
-    event WithdrawHealthFactorUpdated(uint256 oldValue, uint256 newValue, uint256 when);
-    event SwapMaxSlippagePercentUpdated(uint256 oldValue, uint256 newValue, uint256 when);
-
-    function setBorrowHealthFactor(uint256 _minimumHealthFactor) external onlyOwner {
-        require(_minimumHealthFactor >= 1e18, "Must not set HF below 1.0");
-        require(_minimumHealthFactor >= minimumHealthFactorWithdraw * 2, "Minimum borrow HF must be at least twice the minimum withdraw HF");
+    function setBorrowMinHealthFactor(uint256 _minimumHealthFactor) external onlyOwner {
+        require(_minimumHealthFactor > 1e18, "Health factor must be greater than 1.0");
+        require(_minimumHealthFactor >= minimumHealthFactorWithdraw * 2, "The minimum borrow HF must be at least twice the minimum withdraw HF");
         uint256 oldValue = minimumHealthFactorBorrow;
         minimumHealthFactorBorrow = _minimumHealthFactor;
         emit BorrowHealthFactorUpdated(oldValue, _minimumHealthFactor, block.timestamp);
     }
 
-    function setWithdrawHealthFactor(uint256 _minimumHealthFactor) external onlyOwner {
-        require(_minimumHealthFactor >= 1e18, "Must not set HF below 1.0");
-        require(minimumHealthFactorBorrow >= _minimumHealthFactor * 2, "Minimum borrow HF must be at least twice the minimum withdraw HF");
+    function setWithdrawMinHealthFactor(uint256 _minimumHealthFactor) external onlyOwner {
+        require(_minimumHealthFactor > 1e18, "Health factor must be greater than 1.0");
+        require(minimumHealthFactorBorrow >= _minimumHealthFactor * 2, "The minimum withdraw HF must be at most half the minimum borrow HF");
         uint256 oldValue = minimumHealthFactorWithdraw;
         minimumHealthFactorWithdraw = _minimumHealthFactor;
         emit WithdrawHealthFactorUpdated(oldValue, _minimumHealthFactor, block.timestamp);
@@ -507,6 +506,7 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
      * @return The converted amount in the specified number of decimals.
      */
     function shiftAmount(uint256 _amount, uint8 _fromDecimals, uint8 _toDecimals) private pure returns (uint256) {
+        require(_fromDecimals <= 18 && _toDecimals <= 18, "Decimals must be <= 18");
         if (_toDecimals > _fromDecimals) {
             return _amount * (10 ** (_toDecimals - _fromDecimals));
         } else if (_toDecimals < _fromDecimals) {
