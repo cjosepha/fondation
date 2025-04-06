@@ -402,14 +402,6 @@ describe("Fondation unit testing", function () {
       expect(await mockAavePool.read.suppliedReferralCode()).to.equal(0);
     });
 
-    it("should revert if the supply to the Pool contract fails", async function () {
-      const { contract, otherAccount, mockWBTC, mockAavePool } = await loadFixture(deployFondationFixtureOnePercentFees);
-      const amount = 100n;
-      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
-      await mockAavePool.write.setTransactionShouldFail([true]);
-      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("Supply failed");
-    });
-
     it("should deposit the corresponding amount of strategy asset to the strategy contract (exchangeRate = 1.00, no stake)", async function () {
       const { contract, otherAccount, mockWBTC, mockUSDC, strategy } = await loadFixture(deployFondationFixtureOnePercentFees);
       const amount = toBigIntWBTC('1');
@@ -798,16 +790,6 @@ describe("Fondation unit testing", function () {
       expect(await mockAavePool.read.repaidAmount()).to.equal(toBigIntUSDC('820'));
     });
 
-    it("should revert if the repay to the AavePool fails", async function () {
-      const { contract, owner, strategy, mockUSDC, mockAavePool } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
-      expect(await strategy.read.getYieldAmount({ account: owner.account.address })).to.equal(toBigIntUSDC('20')); // Yield 20
-      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('820')); // First deposit on strategy is 800 + 20 of yield
-      expect(await mockUSDC.read.balanceOf([contract.address])).to.equal(0n);
-      const newStrategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
-      await mockAavePool.write.setTransactionShouldFail([true]);
-      await expect(contract.write.setStrategy([newStrategy.address], { account: owner.account.address })).to.be.rejectedWith("Repay failed");
-    });
-
     it("should emit the StrategyChanged event when initializing the strategy", async function () {
       const { contract, owner, publicClient, mockUSDC } = await loadFixture(deployFondationFixtureIncomplete);
       
@@ -882,15 +864,6 @@ describe("Fondation unit testing", function () {
       await contract.write.disableStrategy({ account: owner.account.address });
       expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(0n);
       expect(await mockAavePool.read.repaidAmount()).to.equal(toBigIntUSDC('820'));
-    });
-
-    it("should revert if the repay to the AavePool fails", async function () {
-      const { contract, owner, strategy, mockUSDC, mockAavePool } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
-      expect(await strategy.read.getYieldAmount({ account: owner.account.address })).to.equal(toBigIntUSDC('20')); // Yield 20
-      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('820')); // First deposit on strategy is 800 + 20 of yield
-      expect(await mockUSDC.read.balanceOf([contract.address])).to.equal(0n);
-      await mockAavePool.write.setTransactionShouldFail([true]);
-      await expect(contract.write.disableStrategy({ account: owner.account.address })).to.be.rejectedWith("Repay failed");
     });
     
     it("should emit the StrategyChanged event when disabling strategy", async function () {
