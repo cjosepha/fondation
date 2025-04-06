@@ -1,6 +1,6 @@
 import hre from "hardhat";
-import fondationJson from "../ignition/deployments/chain-31337/artifacts/FondationModule#Fondation.json"
-export const fondationAddress = "0x4E3215fDF47966545293f5287057A4EE751b0139";
+import fondationJson from "../ignition/deployments/chain-11155111/artifacts/FondationModule#Fondation.json"
+export const fondationAddress = "0x56eBe35FB218D3f35D18253D19355eBaD35de0d0";
 
 async function main() {
 
