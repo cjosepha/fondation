@@ -42,7 +42,13 @@ const UnstakeCard = () => {
 
     const { data: hash, writeContract, isPending, isError } = useWriteContract({
         mutation: {
-            
+            onError(error) {
+                console.log("Error", error)
+                toast({
+                    title: "Error",
+                    description: error.message
+                })
+            }
         }
     })
 
