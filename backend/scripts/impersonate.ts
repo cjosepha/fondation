@@ -19,7 +19,7 @@ async function main() {
   console.log(hardhat1.account.address);
   console.log(hardhat2.account.address);
 
-  const wBTCAmountToSend = parseUnits('0.5', 8);
+  const wBTCAmountToSend = parseUnits('1.0', 8);
   const usdcAmountToSend = parseUnits('1000', 6);
 
   let result = await mySepoliaAccount.writeContract({

@@ -93,7 +93,7 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
         // Transfert wBTC from user to Fondation
         wBTC.safeTransferFrom(msg.sender, address(this), _amount);
         
-        supplyToPool(_amount);
+        supplyAllWBTC();
 
         depositMaxAssetToStrategy();
 
@@ -223,7 +223,6 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
         if (rawYield > 0) {
 
             uint256 fees = rawYield * feesRate / (10 ** RATE_DECIMALS);
-            uint256 netYield = rawYield - fees;
             IERC20 strategyAsset = getStrategyERC20();
             uint8 strategyAssetDecimals = strategy.getDecimals();
 
@@ -233,26 +232,26 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
             // Price of wBTC in USD with 5% margin up, 8 decimals
             uint256 wBTCPrice = aaveOracle.getAssetPrice(address(wBTC)) * (100 + swapMaxSlippagePercent) / 1e2;
 
+            uint256 swapAmount = strategyAsset.balanceOf(address(this));
+
             // Minimum amount of wBTC to receive from the swap
-            uint256 minWBTC = (netYield * (10 ** AAVE_BASE_CURRENCY_DECIMALS)) / wBTCPrice;
+            uint256 minWBTC = (swapAmount * (10 ** AAVE_BASE_CURRENCY_DECIMALS)) / wBTCPrice;
             minWBTC = shiftAmount(minWBTC, strategyAssetDecimals, WBTC_DECIMALS);
 
             // Swap netYield amount strategy asset for wBTC on UniSwap
-            strategyAsset.forceApprove(address(swapRouter), netYield);
+            strategyAsset.forceApprove(address(swapRouter), swapAmount);
             address[] memory path = new address[](2);
             path[0] = address(strategyAsset);
             path[1] = address(wBTC);
             uint256[] memory amounts = swapRouter.swapExactTokensForTokens(
-                netYield,
+                swapAmount,
                 minWBTC,
                 path,
                 address(this),
                 block.timestamp
             );
 
-            require(amounts[0] == netYield, "net yield failed to be swapped to wBTC");
-
-            supplyToPool(amounts[1]);
+            supplyAllWBTC();
 
             emit FeesPaid(fees, block.timestamp);
             emit YieldAccrued(amounts[1], block.timestamp);
@@ -309,14 +308,12 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
             
             strategyAsset.forceApprove(address(aavePool), repaidAmount);
             
-            uint256 repaid = aavePool.repay(
+            aavePool.repay(
                 strategy.getAsset(),
                 repaidAmount,
                 2,
                 address(this)
             );
-            
-            require(repaid == repaidAmount, "Repay failed");
         }
 
         if (address(_newStrategy) != address(strategy)) {
@@ -343,6 +340,17 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
 
         // Check the aWBTC balance has increased of exactly the amount supplied
         require(aWBTCBalanceAfterSupply == (aWBTCBalanceBeforeSupply + _wBTCAmount), "Supply failed");
+    }
+
+    function supplyAllWBTC() private {
+        uint256 balance = wBTC.balanceOf(address(this));
+        wBTC.forceApprove(address(aavePool), balance);
+        aavePool.supply(
+            address(wBTC),
+            balance,
+            address(this),
+            0
+        );
     }
 
     function depositToStrategy(uint256 _strategyAssetAmount) private {
