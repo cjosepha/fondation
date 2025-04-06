@@ -3,7 +3,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import hre from "hardhat";
-import { getAddress } from "viem";
+import { getAddress, zeroAddress } from "viem";
 import {
   decodeEventFromLogs,
   setBalanceAndAllowance,
@@ -31,7 +31,9 @@ describe("Fondation unit testing", function () {
     const mockAavePool = await hre.viem.deployContract("MockAavePool", [mockAWBTC.address, mockWBTC.address, mockUSDC.address, btcPrice, usdcPrice]);
     const contract = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address]);
 
-    return { contract, owner, otherAccount, mockWBTC, mockAWBTC, mockAavePool, mockUSDC };
+    const publicClient = await hre.viem.getPublicClient();
+
+    return { contract, owner, otherAccount, publicClient, mockWBTC, mockAWBTC, mockAavePool, mockUSDC, mockAaveOracle, mockUniSwapRouter, fees };
   }
   
   async function deployFondationFixtureOnePercentFees() {
@@ -269,6 +271,41 @@ describe("Fondation unit testing", function () {
       expect(await contract.read.owner()).to.equal(address);
     });
 
+    it("Should revert if wBTC address is 0", async function () {
+      const { mockAWBTC, mockAavePool, mockAaveOracle, mockUniSwapRouter, fees } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(hre.viem.deployContract("Fondation", [fees, zeroAddress, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address])).to.be.rejectedWith("Invalid wBTC address");
+    });
+
+    it("Should revert if aWBTC address is 0", async function () {
+      const { mockWBTC, mockAavePool, mockAaveOracle, mockUniSwapRouter, fees } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(hre.viem.deployContract("Fondation", [fees, mockWBTC.address, zeroAddress, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address])).to.be.rejectedWith("Invalid aWBTC address");
+    });
+
+    it("Should revert if aavePool address is 0", async function () {
+      const { mockWBTC, mockAWBTC, mockAaveOracle, mockUniSwapRouter, fees } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, zeroAddress, mockAaveOracle.address, mockUniSwapRouter.address])).to.be.rejectedWith("Invalid aavePool address");
+    }); 
+
+    it("Should revert if aaveOracle address is 0", async function () {
+      const { mockWBTC, mockAWBTC, mockAavePool, mockUniSwapRouter, fees } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, zeroAddress, mockUniSwapRouter.address])).to.be.rejectedWith("Invalid aaveOracle address");
+    });
+
+    it("Should revert if swapRouter address is 0", async function () {
+      const { mockWBTC, mockAWBTC, mockAavePool, mockAaveOracle, fees } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, zeroAddress])).to.be.rejectedWith("Invalid swapRouter address");
+    });
+
+    it("Should revert if fees rate is higher than 9999", async function () {
+      const { mockWBTC, mockAWBTC, mockAavePool, mockAaveOracle, mockUniSwapRouter } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(hre.viem.deployContract("Fondation", [10000, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address])).to.be.rejectedWith("fees rate should be between 1 and 9999");
+    });
+
+    it("Should revert if fees rate is lower than 1", async function () {
+      const { mockWBTC, mockAWBTC, mockAavePool, mockAaveOracle, mockUniSwapRouter } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(hre.viem.deployContract("Fondation", [0, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address])).to.be.rejectedWith("fees rate should be between 1 and 9999");
+    });
+
     it("Should have nothing staked", async function () {
       const { contract } = await loadFixture(deployFondationFixtureOnePercentFees);
       expect(await contract.read.totalStaked()).to.equal(0n);
@@ -342,7 +379,7 @@ describe("Fondation unit testing", function () {
       const amount = 100n;
       await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
       await mockWBTC.write.setTransactionShouldFail([true]);
-      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("Transfer failed");
+      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejected;
     });
 
     it("should approve Pool contract to spend the staked amount of wBTC on behalf of the Fondation contract", async function () {
@@ -363,14 +400,6 @@ describe("Fondation unit testing", function () {
       expect((await mockAavePool.read.suppliedOnBehalfOf()).toLowerCase()).to.equal(contract.address);
       expect(await mockAavePool.read.suppliedAmount()).to.equal(amount);
       expect(await mockAavePool.read.suppliedReferralCode()).to.equal(0);
-    });
-
-    it("should revert if the supply to the Pool contract fails", async function () {
-      const { contract, otherAccount, mockWBTC, mockAavePool } = await loadFixture(deployFondationFixtureOnePercentFees);
-      const amount = 100n;
-      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, amount);
-      await mockAavePool.write.setTransactionShouldFail([true]);
-      await expect(contract.write.stake([amount], { account: otherAccount.account.address })).to.be.rejectedWith("Supply failed");
     });
 
     it("should deposit the corresponding amount of strategy asset to the strategy contract (exchangeRate = 1.00, no stake)", async function () {
@@ -610,7 +639,7 @@ describe("Fondation unit testing", function () {
 
     it("should revert if the caller is not the owner of the contract", async function () {
       const { contract, otherAccount } = await loadFixture(deployFondationFixtureOnePercentFees);
-      await expect(contract.write.accrueYield({ account: otherAccount.account.address })).to.be.rejectedWith("Ownable: caller is not the owner");
+      await expect(contract.write.accrueYield({ account: otherAccount.account.address })).to.be.rejected;
     });
 
     it("should send the correct amount of fees to the owner (no yield)", async function () {
@@ -712,7 +741,35 @@ describe("Fondation unit testing", function () {
     it("should revert if the caller is not the owner of the contract", async function () {
       const { contract, otherAccount, mockUSDC } = await loadFixture(deployFondationFixtureIncomplete);
       const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
-      await expect(contract.write.setStrategy([strategy.address], { account: otherAccount.account.address })).to.be.rejectedWith("Ownable: caller is not the owner");
+      await expect(contract.write.setStrategy([strategy.address], { account: otherAccount.account.address })).to.be.rejected;
+    });
+
+    it("should revert if the argument is the zero address", async function () {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(contract.write.setStrategy([zeroAddress], { account: owner.account.address })).to.be.rejectedWith("Invalid strategy address");
+    });
+
+    it("should revert if the argument is not a contract", async function () {
+      const { contract, owner, otherAccount } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(contract.write.setStrategy([otherAccount.account.address], { account: owner.account.address })).to.be.rejectedWith("Strategy must be a contract");
+    });
+
+    it("should revert if the argument is a contract which does not implement IERC165", async function () {
+      const { contract, owner, mockUSDC } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(contract.write.setStrategy([mockUSDC.address], { account: owner.account.address })).to.be.rejectedWith("Strategy must implement IERC165");
+    });
+
+    it("should revert if the argument is a contract which does not implement IFondationStrategy", async function () {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const notAFondationStrategy = await hre.viem.deployContract("NotAFondationStrategy", []);
+      await expect(contract.write.setStrategy([notAFondationStrategy.address], { account: owner.account.address })).to.be.rejectedWith("Strategy must implement IFondationStrategy");
+    });
+
+    it("should revert if the strategy is bound to another Fondation", async function () {
+      const { contract, owner, mockUSDC, mockWBTC, mockAWBTC, mockAavePool, mockAaveOracle, mockUniSwapRouter, fees } = await loadFixture(deployFondationFixtureIncomplete);
+      const anotherFondation = await hre.viem.deployContract("Fondation", [fees, mockWBTC.address, mockAWBTC.address, mockAavePool.address, mockAaveOracle.address, mockUniSwapRouter.address]);
+      const strategy = await hre.viem.deployContract("FakeStrategy", [anotherFondation.address, mockUSDC.address, 6]);
+      await expect(contract.write.setStrategy([strategy.address], { account: owner.account.address })).to.be.rejectedWith("Strategy is bound to another Fondation");
     });
 
     it("should set the strategy contract address", async function () {
@@ -722,7 +779,7 @@ describe("Fondation unit testing", function () {
       expect((await contract.read.strategy()).toLowerCase()).to.equal(strategy.address);
     });
 
-    it("should decommission the previous strategy when setting a new strategy", async function () {
+    it("should decommission the previous strategy", async function () {
       const { contract, owner, strategy, mockUSDC, mockAavePool } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
       expect(await strategy.read.getYieldAmount({ account: owner.account.address })).to.equal(toBigIntUSDC('20')); // Yield 20
       expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('820')); // First deposit on strategy is 800 + 20 of yield
@@ -733,14 +790,104 @@ describe("Fondation unit testing", function () {
       expect(await mockAavePool.read.repaidAmount()).to.equal(toBigIntUSDC('820'));
     });
 
-    it("should revert if the repay to the AavePool fails", async function () {
+    it("should emit the StrategyChanged event when initializing the strategy", async function () {
+      const { contract, owner, publicClient, mockUSDC } = await loadFixture(deployFondationFixtureIncomplete);
+      
+      // Get the current block before the transaction
+      const blockBefore = await publicClient.getBlock({ blockTag: "latest" });
+      const before = blockBefore.timestamp; // Get the timestamp of the block
+      
+      const strategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
+      const tx = await contract.write.setStrategy([strategy.address], { account: owner.account.address });
+      const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      
+      // Get the current block after the transaction
+      const blockAfter = await publicClient.getBlock({ blockTag: "latest" });
+      const after = blockAfter.timestamp; // Get the timestamp of the block
+      
+      const event = decodeEventFromLogs(logs, 0, contract);
+      
+      expect(logs.length).to.equal(1);
+      expect(event.eventName).to.equal("StrategyChanged");
+      expect(event.args.previousStrategy).to.equal(zeroAddress);
+      expect(event.args.newStrategy.toLowerCase()).to.equal(strategy.address);
+      expect(Number(event.args.when)).to.be.greaterThanOrEqual(Number(before));
+      expect(Number(event.args.when)).to.be.lessThanOrEqual(Number(after));
+    });
+
+    it("should emit the StrategyChanged event when replacing the strategy", async function () {
+      const { contract, owner, publicClient, mockUSDC, strategy } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
+      
+      // Get the current block before the transaction
+      const blockBefore = await publicClient.getBlock({ blockTag: "latest" });
+      const before = blockBefore.timestamp; // Get the timestamp of the block
+      
+      const newStrategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
+      const tx = await contract.write.setStrategy([newStrategy.address], { account: owner.account.address });
+      const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      
+      // Get the current block after the transaction
+      const blockAfter = await publicClient.getBlock({ blockTag: "latest" });
+      const after = blockAfter.timestamp; // Get the timestamp of the block
+      
+      const event = decodeEventFromLogs(logs, 0, contract);
+      
+      expect(logs.length).to.equal(1);
+      expect(event.eventName).to.equal("StrategyChanged");
+      expect(event.args.previousStrategy.toLowerCase()).to.equal(strategy.address);
+      expect(event.args.newStrategy.toLowerCase()).to.equal(newStrategy.address);
+      expect(Number(event.args.when)).to.be.greaterThanOrEqual(Number(before));
+      expect(Number(event.args.when)).to.be.lessThanOrEqual(Number(after));
+    });
+
+  });
+
+  describe("disableStrategy", function () {
+
+    it("should revert if the caller is not the owner of the contract", async function () {
+      const { contract, otherAccount } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
+      await expect(contract.write.disableStrategy({ account: otherAccount.account.address })).to.be.rejected;
+    });
+
+    it("should not emit any event if the strategy is not set", async function () {
+      const { contract, owner, publicClient } = await loadFixture(deployFondationFixtureIncomplete);
+      const tx = await contract.write.disableStrategy({ account: owner.account.address });
+      const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      expect(logs.length).to.equal(0);
+    });
+
+    it("should decommission the previous strategy", async function () {
       const { contract, owner, strategy, mockUSDC, mockAavePool } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
       expect(await strategy.read.getYieldAmount({ account: owner.account.address })).to.equal(toBigIntUSDC('20')); // Yield 20
       expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(toBigIntUSDC('820')); // First deposit on strategy is 800 + 20 of yield
       expect(await mockUSDC.read.balanceOf([contract.address])).to.equal(0n);
-      const newStrategy = await hre.viem.deployContract("FakeStrategy", [contract.address, mockUSDC.address, 6]);
-      await mockAavePool.write.setTransactionShouldFail([true]);
-      await expect(contract.write.setStrategy([newStrategy.address], { account: owner.account.address })).to.be.rejectedWith("Repay failed");
+      await contract.write.disableStrategy({ account: owner.account.address });
+      expect(await mockUSDC.read.balanceOf([strategy.address])).to.equal(0n);
+      expect(await mockAavePool.read.repaidAmount()).to.equal(toBigIntUSDC('820'));
+    });
+    
+    it("should emit the StrategyChanged event when disabling strategy", async function () {
+      const { contract, owner, publicClient, mockUSDC, strategy } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndStrategyYield);
+      
+      // Get the current block before the transaction
+      const blockBefore = await publicClient.getBlock({ blockTag: "latest" });
+      const before = blockBefore.timestamp; // Get the timestamp of the block
+      
+      const tx = await contract.write.disableStrategy({ account: owner.account.address });
+      const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      
+      // Get the current block after the transaction
+      const blockAfter = await publicClient.getBlock({ blockTag: "latest" });
+      const after = blockAfter.timestamp; // Get the timestamp of the block
+      
+      const event = decodeEventFromLogs(logs, 0, contract);
+      
+      expect(logs.length).to.equal(1);
+      expect(event.eventName).to.equal("StrategyChanged");
+      expect(event.args.previousStrategy.toLowerCase()).to.equal(strategy.address);
+      expect(event.args.newStrategy).to.equal(zeroAddress);
+      expect(Number(event.args.when)).to.be.greaterThanOrEqual(Number(before));
+      expect(Number(event.args.when)).to.be.lessThanOrEqual(Number(after));
     });
 
   });
@@ -750,7 +897,7 @@ describe("Fondation unit testing", function () {
     it("should revert if the caller is not the owner of the contract", async function () {
       const { contract, otherAccount } = await loadFixture(deployFondationFixtureIncomplete);
       const mockStBTC = await hre.viem.deployContract("MockStBTC", [contract.address]);
-      await expect(contract.write.setStBTC([mockStBTC.address], { account: otherAccount.account.address })).to.be.rejectedWith("Ownable: caller is not the owner");
+      await expect(contract.write.setStBTC([mockStBTC.address], { account: otherAccount.account.address })).to.be.rejected;
     });
 
     it("should set the stBTC contract address", async function () {
@@ -769,118 +916,124 @@ describe("Fondation unit testing", function () {
     });
   });
 
-  describe.skip("various scenarios", function () {
+  describe("setBorrowHealthFactor", function() {
 
-    it("accrue yield then stake then accrue yield", async function () {
-      
-      const { contract, owner, otherAccount, mockWBTC, mockAWBTC } = await loadFixture(deployFondationFixtureTwentyFivePercentFeesWithStakeAndYield_2);
-
-      // Owner takes the fees and accrues the yield on the contract
-      await contract.write.accrueYield({ account: owner.account.address });
-
-      // A user stakes 20 wBTC
-      await setBalanceAndAllowance(mockWBTC, otherAccount.account.address, contract.address, 20n);
-      await contract.write.stake([20n], { account: otherAccount.account.address });
-
-      // Owner takes the fees and accrues the yield on the contract
-      await contract.write.accrueYield({ account: owner.account.address });
-
-      // Owner should have 2 aWBTC
-      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(2n);
-
-      // Total staked should be 40 wBTC
-      expect(await contract.read.totalStaked()).to.equal(40n);
-
+    it("should revert if the caller is not the owner of the contract", async function() {
+      const { contract, otherAccount } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('6');
+      await expect(contract.write.setBorrowMinHealthFactor([healthFactor], { account: otherAccount.account.address })).to.be.rejected;
     });
 
-    it("stake 100 wBTC, then revenues 20 aWBTC, then unstake 100 stBTC, then payout", async function () {
-
-      const { contract, owner, user1, mockStBTC, mockAWBTC, mockWBTC } = await loadFixture(deployFondationFixtureTwentyTwentyPercentFeesWithStakeAndYield);
-
-      // The owner should have 0 aWBTC
-      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(0n);
-
-      // The user should have 100 stBTC
-      expect(await mockStBTC.read.balanceOf([user1.account.address])).to.equal(toBigInt('100'));
-
-      // The contract should have 100+20 aWBTC
-      expect(await mockAWBTC.read.balanceOf([contract.address])).to.equal(toBigIntWBTC('120'));
-
-      // The exchange rate should be 1.20
-      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1.20'));
-
-      // Total supply of stBTC should be 100
-      expect(await mockStBTC.read.totalSupply()).to.equal(toBigInt('100'));
-
-      // Total supply of aWBTC should be 120
-      expect(await mockAWBTC.read.totalSupply()).to.equal(toBigIntWBTC('120'));
-      
-      // Unstake 100 stBTC (the whole user stake)
-      await contract.write.unstake([toBigInt('100')], { account: user1.account.address });
-      
-      // The contract totalStaked value should be 0 wBTC
-      expect(await contract.read.totalStaked()).to.equal(0n);
-
-      // The exchange rate should be 1.00
-      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1.0'));
-     
-      // The user should have 0 stBTC
-      expect(await mockStBTC.read.balanceOf([user1.account.address])).to.equal(0n);
-
-      // The user should have 100+16 wBTC
-      expect(await mockWBTC.read.balanceOf([user1.account.address])).to.equal(toBigIntWBTC('116'));
-
-      // Total supply of stBTC should be 0
-      expect(await mockStBTC.read.totalSupply()).to.equal(0n);
-
-      // The contract should only have the 4 aWBTC of the fees
-      expect(await mockAWBTC.read.balanceOf([contract.address])).to.equal(toBigIntWBTC('4'));
-
-      // The owner retrieves the fees
-      await contract.write.accrueYield({ account: owner.account.address });
-
-      // The owner should have 4 aWBTC
-      expect(await mockAWBTC.read.balanceOf([owner.account.address])).to.equal(toBigIntWBTC('4'));
-
+    it("should revert if the health factor is less than 1", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('0.9');
+      await expect(contract.write.setBorrowMinHealthFactor([healthFactor], { account: owner.account.address })).to.be.rejectedWith("Health factor must be greater than 1.0");
     });
 
-    it("stake 100 wBTC, then revenues 20 aWTC, then stake 200 wBTC, then unstake the last stake", async function () {
-
-      const { contract, owner, user1, user2, mockStBTC, mockWBTC, mockAWBTC } = await loadFixture(deployFondationFixtureTwentyTwentyPercentFeesWithStakeAndYield);
-
-      // Stake 200 wBTC (user2)
-      await setBalanceAndAllowance(mockWBTC, user2.account.address, contract.address, toBigIntWBTC('200'));
-      await contract.write.stake([toBigIntWBTC('200')], { account: user2.account.address });
-
-      // The user2 should have 166.666666666666666666 stBTC
-      expect(await mockStBTC.read.balanceOf([user2.account.address])).to.equal(toBigInt('166.666666666666666666'));
-
-      // The user2 should have 0 wBTC
-      expect(await mockWBTC.read.balanceOf([user2.account.address])).to.equal(0n);
-
-      // The exchange rate should be 1.20
-      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1.20'));
-
-      // Unstake 172.4137931 stBTC (user2)
-      await contract.write.unstake([parseUnits('172.4137931', 8)], { account: user2.account.address });
-
-      // The user2 should have 0 stBTC
-      expect(await mockStBTC.read.balanceOf([user2.account.address])).to.equal(0n);
-
-      // The user2 should have 200 wBTC
-      expect(await mockWBTC.read.balanceOf([user2.account.address])).to.equal(toBigIntWBTC('199.99999999')); // ERROR : not exactly 200 wBTC
-
-      // Total supply of stBTC should be 100
-      expect(await mockStBTC.read.totalSupply()).to.equal(toBigInt('100'));
-
-      // Total supply of aWBTC should be 120
-      expect(await mockAWBTC.read.totalSupply()).to.equal(toBigIntWBTC('120.00000001'));
-
-      // The exchange rate should be 1.16
-      expect(await contract.read.exchangeRate()).to.equal(toBigIntExchangeRate('1.20'));
-      
+    it("should revert if the health factor is 1", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('1');
+      await expect(contract.write.setBorrowMinHealthFactor([healthFactor], { account: owner.account.address })).to.be.rejectedWith("Health factor must be greater than 1.0");
     });
 
+    it("should revert if the borrow health factor is less than twice the withdraw health factor", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('3');
+      await expect(contract.write.setBorrowMinHealthFactor([healthFactor], { account: owner.account.address })).to.be.rejectedWith("The minimum borrow HF must be at least twice the minimum withdraw HF");
+    });
+    
+    it("should set the borrow health factor", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('6');
+      await contract.write.setBorrowMinHealthFactor([healthFactor], { account: owner.account.address });
+      expect(await contract.read.minimumHealthFactorBorrow()).to.equal(healthFactor);
+    });
+
+    it("should emit the BorrowHealthFactorUpdated event", async function() {
+      const { contract, owner, publicClient } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('6');
+      const tx = await contract.write.setBorrowMinHealthFactor([healthFactor], { account: owner.account.address });
+        const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      const event = decodeEventFromLogs(logs, 0, contract);
+      expect(logs.length).to.equal(1);
+      expect(event.eventName).to.equal("BorrowHealthFactorUpdated");
+      expect(event.args.oldValue).to.equal(toBigInt('4'));
+      expect(event.args.newValue).to.equal(healthFactor);
+    });
+    
+  });
+
+  describe("setWithdrawHealthFactor", function() {
+
+    it("should revert if the caller is not the owner of the contract", async function() {
+      const { contract, otherAccount } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('1.8');
+      await expect(contract.write.setWithdrawMinHealthFactor([healthFactor], { account: otherAccount.account.address })).to.be.rejected;
+    });
+
+    it("should revert if the health factor is less than 1", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('0.9');
+      await expect(contract.write.setWithdrawMinHealthFactor([healthFactor], { account: owner.account.address })).to.be.rejectedWith("Health factor must be greater than 1.0");
+    });
+
+    it("should revert if the health factor is 1", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('1');
+      await expect(contract.write.setWithdrawMinHealthFactor([healthFactor], { account: owner.account.address })).to.be.rejectedWith("Health factor must be greater than 1.0");
+    });
+
+    it("should revert if the withdraw health factor is more than half the borrow health factor", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('3');
+      await expect(contract.write.setWithdrawMinHealthFactor([healthFactor], { account: owner.account.address })).to.be.rejectedWith("The minimum withdraw HF must be at most half the minimum borrow HF");
+    });
+
+    it("should set the withdraw health factor", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('1.8');
+      await contract.write.setWithdrawMinHealthFactor([healthFactor], { account: owner.account.address });
+      expect(await contract.read.minimumHealthFactorWithdraw()).to.equal(healthFactor);
+    });
+
+    it("should emit the WithdrawHealthFactorUpdated event", async function() {
+      const { contract, owner, publicClient } = await loadFixture(deployFondationFixtureIncomplete);
+      const healthFactor = toBigInt('1.8');
+      const tx = await contract.write.setWithdrawMinHealthFactor([healthFactor], { account: owner.account.address });
+      const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      const event = decodeEventFromLogs(logs, 0, contract);
+      expect(logs.length).to.equal(1);
+      expect(event.eventName).to.equal("WithdrawHealthFactorUpdated");
+      expect(event.args.oldValue).to.equal(toBigInt('2'));
+      expect(event.args.newValue).to.equal(healthFactor);
+    }); 
+
+  });
+
+  describe("setSwapMaxSlippage", function() {
+
+    it("should revert if the caller is not the owner of the contract", async function() {
+      const { contract, otherAccount } = await loadFixture(deployFondationFixtureIncomplete);
+      await expect(contract.write.setSwapMaxSlippagePercent([1n], { account: otherAccount.account.address })).to.be.rejected;
+    });
+
+    it("should set the swap max slippage", async function() {
+      const { contract, owner } = await loadFixture(deployFondationFixtureIncomplete);
+      await contract.write.setSwapMaxSlippagePercent([1n], { account: owner.account.address });
+      expect(await contract.read.swapMaxSlippagePercent()).to.equal(1n);
+    });
+
+    it("should emit the SwapMaxSlippagePercentUpdated event", async function() {
+      const { contract, owner, publicClient } = await loadFixture(deployFondationFixtureIncomplete);
+      const slippagePercent = 1n;
+      const tx = await contract.write.setSwapMaxSlippagePercent([slippagePercent], { account: owner.account.address });
+      const { logs } = await publicClient.waitForTransactionReceipt({ hash: tx });
+      const event = decodeEventFromLogs(logs, 0, contract);
+      expect(logs.length).to.equal(1);
+      expect(event.eventName).to.equal("SwapMaxSlippagePercentUpdated");
+      expect(event.args.oldValue).to.equal(5n);
+      expect(event.args.newValue).to.equal(slippagePercent);
+    });
   });
 
 });

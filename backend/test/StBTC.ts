@@ -3,7 +3,7 @@ import {
 } from "@nomicfoundation/hardhat-toolbox-viem/network-helpers";
 import { expect } from "chai";
 import hre from "hardhat";
-
+import { zeroAddress } from "viem";
 describe("stBTC unit testing", function () {
 
     async function deployFondationFixture() {
@@ -31,6 +31,10 @@ describe("stBTC unit testing", function () {
             const { fondation, owner } = await loadFixture(deployFondationFixture);
             const stBTC = await hre.viem.deployContract("stBTC", [fondation.address]);
             expect((await stBTC.read.owner()).toLocaleLowerCase()).to.equal(owner.account.address);
+        });
+
+        it("should revert if the Fondation address is zero", async function () {
+            await expect(hre.viem.deployContract("stBTC", [zeroAddress])).to.be.rejectedWith("Invalid Fondation address");
         });
 
         it("should set the correct Fondation contract", async function () {
@@ -74,7 +78,7 @@ describe("stBTC unit testing", function () {
                 functionName: "burn",
                 args: [otherAccount.account.address, 100n],
                 account: fondation.address
-            })).to.be.rejectedWith("ERC20: burn amount exceeds balance");
+            })).to.be.rejected;
         });
 
     });

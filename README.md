@@ -15,9 +15,10 @@ The dApp is available at : https://fondation-one.vercel.app/
 ### Backend
 
 The following `Fondation` smart contracts are deployed on Sepolia testnet:
-  - Fondation : https://sepolia.etherscan.io/address/0xc90E62a2e0d63Fa423E74428dF288617b8EF2d49#code
-  - FakeStrategy : https://sepolia.etherscan.io/address/0xbdCA2CbC0B8b38652117a47D6407Fe1c9b447252#code
-  - stBTC : https://sepolia.etherscan.io/address/0x7C99E781454E6daA0038f96AB859D2AA49217882#code
+  - Fondation : https://sepolia.etherscan.io/address/0x56eBe35FB218D3f35D18253D19355eBaD35de0d0#code
+  - FakeStrategy (USDC) : https://sepolia.etherscan.io/address/0x8AC80465caA8882EBfa6fc4636D0D1Cd00252D9B#code
+  - FakeStrategy (EURS) : https://sepolia.etherscan.io/address/0xB3EE7253849e3f77A8f1aeF3150EB89bB117f00C#code
+  - stBTC : https://sepolia.etherscan.io/address/0xa0651C0Cc7579221142424B61c40345cdD7AE2D3#code
 
 The `Fondation` smart contract also interacts with the following existing contracts:
   - AAVE Pool : https://sepolia.etherscan.io/address/0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951#code
@@ -26,3 +27,4 @@ The `Fondation` smart contract also interacts with the following existing contra
   - wBTC : https://sepolia.etherscan.io/address/0x29f2D40B0605204364af54EC677bD022dA425d03#code
   - aWBTC : https://sepolia.etherscan.io/address/0x1804Bf30507dc2EB3bDEbbbdd859991EAeF6EefF#code
   - USDC : https://sepolia.etherscan.io/address/0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8#code
+  - EURS : https://sepolia.etherscan.io/address/0x6d906e526a4e2Ca02097BA9d0caA3c382F52278E#code

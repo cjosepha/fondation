@@ -5,7 +5,10 @@
   "FondationModule#UniSwapRouter": "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",
   "FondationModule#aWBTC": "0x1804Bf30507dc2EB3bDEbbbdd859991EAeF6EefF",
   "FondationModule#wBTC": "0x29f2D40B0605204364af54EC677bD022dA425d03",
-  "FondationModule#Fondation": "0xc90E62a2e0d63Fa423E74428dF288617b8EF2d49",
-  "FondationModule#FakeStrategy": "0xbdCA2CbC0B8b38652117a47D6407Fe1c9b447252",
-  "FondationModule#stBTC": "0x7C99E781454E6daA0038f96AB859D2AA49217882"
+  "FondationModule#Fondation": "0x56eBe35FB218D3f35D18253D19355eBaD35de0d0",
+  "FondationModule#FakeStrategy": "0x8AC80465caA8882EBfa6fc4636D0D1Cd00252D9B",
+  "FondationModule#stBTC": "0xa0651C0Cc7579221142424B61c40345cdD7AE2D3",
+  "FakeStrategyEURSModule#EURS": "0x6d906e526a4e2Ca02097BA9d0caA3c382F52278E",
+  "FakeStrategyEURSModule#Fondation": "0x56eBe35FB218D3f35D18253D19355eBaD35de0d0",
+  "FakeStrategyEURSModule#FakeStrategy": "0xB3EE7253849e3f77A8f1aeF3150EB89bB117f00C"
 }

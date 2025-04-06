@@ -6,6 +6,9 @@ export interface Event {
 }
 
 export function decodeEventFromLogs(logs: Log[], index: number, contract: any): Event {
+    if (logs.length === 0) {
+        throw new Error("Expected logs array to not be empty");
+    }
     return decodeEventLog({
         abi: contract.abi,
         data: logs[index].data,

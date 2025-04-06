@@ -30,10 +30,10 @@ const FondationModule = buildModule("FondationModule", (m) => {
 
   const fondation = m.contract("Fondation", [feesRate, wBTC, aWBTC, aavePool, aaveOracle, uniswapV2Router02]);
   
-  const fakeStrategy = m.contract("FakeStrategy", [fondation, USDC, 6]);
+  const fakeStrategyUSDC = m.contract("FakeStrategy", [fondation, USDC, 6]);
   const stBTC = m.contract("stBTC", [fondation]);
 
-  m.call(fondation, "setStrategy", [fakeStrategy]);
+  m.call(fondation, "setStrategy", [fakeStrategyUSDC]);
   m.call(fondation, "setStBTC", [stBTC]);
 
   return { fondation };

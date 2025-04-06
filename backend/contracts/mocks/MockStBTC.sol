@@ -5,6 +5,12 @@ import {IStBTC} from "../stBTC.sol";
 import {MockERC20} from "./MockERC20.sol";
 import {IFondation} from "../Fondation.sol";
 
+/**
+ * @title MockStBTC
+ * @notice A mock implementation of the stBTC token interface.
+ * @dev This mock allows for testing of the stBTC token contract by providing a controlled environment for simulating
+ *      various scenarios and interactions with the stBTC token.
+ */
 contract MockStBTC is MockERC20, IStBTC {
 
     address public mintedTo;

@@ -2,8 +2,9 @@
 pragma solidity ^0.8.28;
 
 import {IFondationStrategy} from "./IFondationStrategy.sol";
-import {Ownable} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/Ownable.sol";
-import {IERC20} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Fondation} from "./Fondation.sol";
 
 /**
@@ -12,20 +13,29 @@ import {Fondation} from "./Fondation.sol";
  * Any IFondationStrategy implementation should inherit from this contract.
  */
 abstract contract BaseStrategy is Ownable, IFondationStrategy {
+
+    using SafeERC20 for IERC20;
     
-    Fondation private fondation;
-    address internal asset;
-    uint8 internal decimals;
+    Fondation private immutable fondation;
+    address private immutable asset;
+    uint8 private immutable decimals;
 
     modifier onlyFondation() {
         require(msg.sender == address(fondation), "Caller must be the Fondation contract");
         _;
     }
 
-    constructor(Fondation _fondation, address _asset, uint8 _decimals) {
+    constructor(Fondation _fondation, address _asset, uint8 _decimals) Ownable(msg.sender) {
+        require(address(_fondation) != address(0), "Invalid Fondation address");
+        require(_asset != address(0), "Invalid asset address");
+        require(_decimals > 0 && _decimals <= 18, "Invalid decimals");
         fondation = _fondation;
         asset = _asset;
         decimals = _decimals;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
+        return interfaceId == type(IFondationStrategy).interfaceId;
     }
 
     /**
@@ -37,9 +47,7 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
         require(_amount > 0, "You must specify an amount greater than 0");
 
         // Transfer strategy asset from Fondation to BaseStrategy
-        bool result = IERC20(asset).transferFrom(msg.sender, address(this), _amount);
-
-        require(result, "deposit failed");
+        IERC20(asset).safeTransferFrom(msg.sender, address(this), _amount);
     }
 
     /**
@@ -53,9 +61,7 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
         uint256 amount = IERC20(asset).balanceOf(address(this));
 
         // Transfer all strategy asset to Fondation
-        bool result = IERC20(asset).transfer(msg.sender, amount);
-
-        require(result, "decomission failed");
+        IERC20(asset).safeTransfer(msg.sender, amount);
     }
 
     function getAsset() external view override returns (address) {
@@ -64,6 +70,10 @@ abstract contract BaseStrategy is Ownable, IFondationStrategy {
 
     function getDecimals() external view override returns (uint8) {
         return decimals;
+    }
+
+    function getFondation() external view override returns (address) {
+        return address(fondation);
     }
 
 }

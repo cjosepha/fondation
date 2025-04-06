@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {Ownable} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/Ownable.sol";
-import {IERC20} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
 import {IStBTC} from "./stBTC.sol";
-import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
-import {IAToken} from "@aave/core-v3/contracts/interfaces/IAToken.sol";
-import {IAaveOracle} from "@aave/core-v3/contracts/interfaces/IAaveOracle.sol";
+import {IPool, IAToken, IAaveOracle} from "./Aave.sol";
 import {IFondationStrategy} from "./IFondationStrategy.sol";
 import {IUniswapV2Router02} from '@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol';
-
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 interface IFondation {} // For testing purposes
 
 /**
@@ -17,7 +17,9 @@ interface IFondation {} // For testing purposes
  * The Fondation contract is the user facade of the Fondation system.
  * Users interact with this contract to stake and unstake wBTC.
  */
-contract Fondation is Ownable, IFondation {
+contract Fondation is Ownable, ReentrancyGuard, IFondation {
+
+    using SafeERC20 for IERC20;
 
     // Decimals
     uint8 private constant WBTC_DECIMALS = 8;
@@ -39,8 +41,9 @@ contract Fondation is Ownable, IFondation {
 
     IFondationStrategy public strategy;
 
-    uint256 private minimumHealthFactorBorrow = 4 * (10 ** HEALTH_FACTOR_DECIMALS);
-    uint256 private minimumHealthFactorWithdraw = 2 * (10 ** HEALTH_FACTOR_DECIMALS);
+    uint256 public minimumHealthFactorBorrow = 4 * (10 ** HEALTH_FACTOR_DECIMALS);
+    uint256 public minimumHealthFactorWithdraw = 2 * (10 ** HEALTH_FACTOR_DECIMALS);
+    uint256 public swapMaxSlippagePercent = 5;
 
     uint256 public immutable feesRate;
 
@@ -48,15 +51,25 @@ contract Fondation is Ownable, IFondation {
     event Unstaked(uint256 amount, uint256 when); // Amount of staked wBTC that has been unstaked.
     event FeesPaid(uint256 amount, uint256 when); // Amount of fees that has been paid to the owner of the contract.
     event YieldAccrued(uint256 amount, uint256 when); // Amount of yield that has been accrued to the contract.
+    event StrategyChanged(address indexed previousStrategy, address indexed newStrategy, uint256 when); // A new strategy has been set.
+    event BorrowHealthFactorUpdated(uint256 oldValue, uint256 newValue, uint256 when); // The borrow health factor has been updated.
+    event WithdrawHealthFactorUpdated(uint256 oldValue, uint256 newValue, uint256 when); // The withdraw health factor has been updated.
+    event SwapMaxSlippagePercentUpdated(uint256 oldValue, uint256 newValue, uint256 when); // The swap max slippage percent has been updated.
 
     /**
      * @dev Constructor that sets the fees rate for the contract.
      * @param _feesRate The initial fees rate to be set, expressed in 0.01 of %.
      */
-    constructor(uint256 _feesRate, IERC20 _wBTC, IAToken _aWBTC, IPool _aavePool, IAaveOracle _aaveOracle, IUniswapV2Router02 _swapRouter) {
+    constructor(uint256 _feesRate, IERC20 _wBTC, IAToken _aWBTC, IPool _aavePool, IAaveOracle _aaveOracle, IUniswapV2Router02 _swapRouter) Ownable(msg.sender) {
+        
+        require(address(_wBTC) != address(0), "Invalid wBTC address");
+        require(address(_aWBTC) != address(0), "Invalid aWBTC address");
+        require(address(_aavePool) != address(0), "Invalid aavePool address");
+        require(address(_aaveOracle) != address(0), "Invalid aaveOracle address");
+        require(address(_swapRouter) != address(0), "Invalid swapRouter address");
         require(
-            _feesRate > 1 && _feesRate < 1 * (10 ** RATE_DECIMALS),
-            "fees rate should be between 0 and 9999"
+            _feesRate >= 1 && _feesRate < (10 ** RATE_DECIMALS),
+            "fees rate should be between 1 and 9999"
         );
 
         feesRate = _feesRate;
@@ -71,17 +84,16 @@ contract Fondation is Ownable, IFondation {
     // User Facing Interface // 
     ///////////////////////////
     
-    function stake(uint256 _amount) external {
+    function stake(uint256 _amount) external nonReentrant {
         
         require(_amount > 0, "You must specify an amount greater than 0");
 
         uint256 rate = exchangeRate();
 
         // Transfert wBTC from user to Fondation
-        bool result = wBTC.transferFrom(msg.sender, address(this), _amount);
-        require(result, "Transfer failed");
+        wBTC.safeTransferFrom(msg.sender, address(this), _amount);
         
-        supplyToPool(_amount);
+        supplyAllWBTC();
 
         depositMaxAssetToStrategy();
 
@@ -97,7 +109,7 @@ contract Fondation is Ownable, IFondation {
      * The protocol will burn the stBTC tokens and return the equivalent amount of wBTC tokens to the caller, according to the current exchange rate.
      * @param _amount The amount of stBTC tokens to unstake on 18 decimals.
      */
-    function unstake(uint256 _amount) external {
+    function unstake(uint256 _amount) external nonReentrant {
         
         require(_amount > 0, "You must specify an amount greater than 0");
 
@@ -160,36 +172,35 @@ contract Fondation is Ownable, IFondation {
      * If a new strategy is set, the current strategy will be decommissioned and the borrowed asset will be repaid.
      * It's important to call accrueYield() on the current strategy prior to set a new strategy, to retrieve any pending yield and processes fees.
      */
-    function setStrategy(IFondationStrategy _strategy) external onlyOwner {
-        
-        require(address(_strategy) != address(strategy), "Strategy must be different from the current one");
+    function setStrategy(IFondationStrategy _newStrategy) external onlyOwner nonReentrant {
 
-        if (address(strategy) != address(0)) {
-            
-            // Decomission the current strategy
-            strategy.decommission();
-            
-            // Repay the borrowed strategy asset
-            IERC20 strategyAsset = getStrategyERC20();
-            uint256 repaidAmount = strategyAsset.balanceOf(address(this));
-            
-            bool approved = strategyAsset.approve(address(aavePool), repaidAmount);
-            require(approved, "Strategy asset approval failed");
-            
-            uint256 repaid = aavePool.repay(
-                strategy.getAsset(),
-                repaidAmount,
-                2,
-                address(this)
-            );
-            
-            require(repaid == repaidAmount, "Repay failed");
+        require(address(_newStrategy) != address(0), "Invalid strategy address");
+        require(address(_newStrategy).code.length > 0, "Strategy must be a contract");
+
+        try IERC165(address(_newStrategy)).supportsInterface(type(IFondationStrategy).interfaceId) returns (bool isSupported) {
+            require(isSupported, "Strategy must implement IFondationStrategy");
+        } catch {
+            revert("Strategy must implement IERC165");
         }
 
-        strategy = _strategy;
+        require(address(_newStrategy) != address(strategy), "Strategy must be different");
 
-        // Send the strategy asset to the strategy contract
+        require(
+            _newStrategy.getFondation() == address(this),
+            "Strategy is bound to another Fondation"
+        );
+
+        processStrategyChange(_newStrategy);
         depositMaxAssetToStrategy();
+    }
+
+    /**
+     * Disable the strategy contract.
+     * The current strategy will be decommissioned and the borrowed asset will be repaid.
+     * It's important to call accrueYield() on the current strategy prior to disable it, to retrieve any pending yield and processes fees.
+     */
+    function disableStrategy() external onlyOwner nonReentrant {
+        processStrategyChange(IFondationStrategy(address(0)));
     }
 
     /**
@@ -201,7 +212,7 @@ contract Fondation is Ownable, IFondation {
         stBTC = _stBTC;
     }
 
-    function accrueYield() external onlyOwner {
+    function accrueYield() external onlyOwner nonReentrant {
         
         require(isStrategyInitialized(), "A IFondationStrategy contract must be set");
         
@@ -212,48 +223,62 @@ contract Fondation is Ownable, IFondation {
         if (rawYield > 0) {
 
             uint256 fees = rawYield * feesRate / (10 ** RATE_DECIMALS);
-            uint256 netYield = rawYield - fees;
             IERC20 strategyAsset = getStrategyERC20();
             uint8 strategyAssetDecimals = strategy.getDecimals();
 
             // Transfer the fees to the owner of the contract
-            require(strategyAsset.transfer(msg.sender, fees), "Fees transfer failed");
+            strategyAsset.safeTransfer(msg.sender, fees);
 
             // Price of wBTC in USD with 5% margin up, 8 decimals
-            uint256 wBTCPrice = aaveOracle.getAssetPrice(address(wBTC)) * 105 / 1e2;
+            uint256 wBTCPrice = aaveOracle.getAssetPrice(address(wBTC)) * (100 + swapMaxSlippagePercent) / 1e2;
+
+            uint256 swapAmount = strategyAsset.balanceOf(address(this));
 
             // Minimum amount of wBTC to receive from the swap
-            uint256 minWBTC = (netYield * (10 ** AAVE_BASE_CURRENCY_DECIMALS)) / wBTCPrice;
+            uint256 minWBTC = (swapAmount * (10 ** AAVE_BASE_CURRENCY_DECIMALS)) / wBTCPrice;
             minWBTC = shiftAmount(minWBTC, strategyAssetDecimals, WBTC_DECIMALS);
 
             // Swap netYield amount strategy asset for wBTC on UniSwap
-            strategyAsset.approve(address(swapRouter), netYield);
+            strategyAsset.forceApprove(address(swapRouter), swapAmount);
             address[] memory path = new address[](2);
             path[0] = address(strategyAsset);
             path[1] = address(wBTC);
             uint256[] memory amounts = swapRouter.swapExactTokensForTokens(
-                netYield,
+                swapAmount,
                 minWBTC,
                 path,
                 address(this),
                 block.timestamp
             );
 
-            require(amounts[0] == netYield, "net yield failed to be swapped to wBTC");
-
-            supplyToPool(amounts[1]);
+            supplyAllWBTC();
 
             emit FeesPaid(fees, block.timestamp);
             emit YieldAccrued(amounts[1], block.timestamp);
         }
     }
 
-    function setBorrowHealthFactor(uint256 _minimumHealthFactor) external onlyOwner {
+    function setBorrowMinHealthFactor(uint256 _minimumHealthFactor) external onlyOwner {
+        require(_minimumHealthFactor > 1e18, "Health factor must be greater than 1.0");
+        require(_minimumHealthFactor >= minimumHealthFactorWithdraw * 2, "The minimum borrow HF must be at least twice the minimum withdraw HF");
+        uint256 oldValue = minimumHealthFactorBorrow;
         minimumHealthFactorBorrow = _minimumHealthFactor;
+        emit BorrowHealthFactorUpdated(oldValue, _minimumHealthFactor, block.timestamp);
     }
 
-    function setWithdrawHealthFactor(uint256 _minimumHealthFactor) external onlyOwner {
+    function setWithdrawMinHealthFactor(uint256 _minimumHealthFactor) external onlyOwner {
+        require(_minimumHealthFactor > 1e18, "Health factor must be greater than 1.0");
+        require(minimumHealthFactorBorrow >= _minimumHealthFactor * 2, "The minimum withdraw HF must be at most half the minimum borrow HF");
+        uint256 oldValue = minimumHealthFactorWithdraw;
         minimumHealthFactorWithdraw = _minimumHealthFactor;
+        emit WithdrawHealthFactorUpdated(oldValue, _minimumHealthFactor, block.timestamp);
+    }
+
+    function setSwapMaxSlippagePercent(uint256 _swapMaxSlippagePercent) external onlyOwner {
+        require(_swapMaxSlippagePercent >= 1 && _swapMaxSlippagePercent <= 10, "Swap max slippage must be between 1 and 10");
+        uint256 oldValue = swapMaxSlippagePercent;
+        swapMaxSlippagePercent = _swapMaxSlippagePercent;
+        emit SwapMaxSlippagePercentUpdated(oldValue, _swapMaxSlippagePercent, block.timestamp);
     }
 
     /////////////////////// 
@@ -267,10 +292,39 @@ contract Fondation is Ownable, IFondation {
         return address(strategy) != address(0);
     }
 
+    /**
+     * Process the strategy change
+     * @param _newStrategy The new strategy to be set
+     */
+    function processStrategyChange(IFondationStrategy _newStrategy) private {
+        if (isStrategyInitialized()) {
+            
+            // Decomission the current strategy
+            strategy.decommission();
+            
+            // Repay the borrowed strategy asset
+            IERC20 strategyAsset = getStrategyERC20();
+            uint256 repaidAmount = strategyAsset.balanceOf(address(this));
+            
+            strategyAsset.forceApprove(address(aavePool), repaidAmount);
+            
+            aavePool.repay(
+                strategy.getAsset(),
+                repaidAmount,
+                2,
+                address(this)
+            );
+        }
+
+        if (address(_newStrategy) != address(strategy)) {
+            emit StrategyChanged(address(strategy), address(_newStrategy), block.timestamp);
+        }
+        strategy = _newStrategy;
+    }
+
     function supplyToPool(uint256 _wBTCAmount) private {
         // Approve Pool to spend on behalf of Fondation
-        bool approved = wBTC.approve(address(aavePool), _wBTCAmount);
-        require(approved, "wBTC approval failed");
+        wBTC.forceApprove(address(aavePool), _wBTCAmount);
 
         uint256 aWBTCBalanceBeforeSupply = aWBTC.balanceOf(address(this));
 
@@ -288,10 +342,20 @@ contract Fondation is Ownable, IFondation {
         require(aWBTCBalanceAfterSupply == (aWBTCBalanceBeforeSupply + _wBTCAmount), "Supply failed");
     }
 
+    function supplyAllWBTC() private {
+        uint256 balance = wBTC.balanceOf(address(this));
+        wBTC.forceApprove(address(aavePool), balance);
+        aavePool.supply(
+            address(wBTC),
+            balance,
+            address(this),
+            0
+        );
+    }
+
     function depositToStrategy(uint256 _strategyAssetAmount) private {
         // Approve IFondationStrategy to spend on behalf of Fondation
-        bool approved = getStrategyERC20().approve(address(strategy), _strategyAssetAmount);
-        require(approved, "IFondationStrategy asset approval failed");
+        getStrategyERC20().forceApprove(address(strategy), _strategyAssetAmount);
         
         // Deposit strategy asset to IFondationStrategy
         strategy.deposit(_strategyAssetAmount);
@@ -450,6 +514,7 @@ contract Fondation is Ownable, IFondation {
      * @return The converted amount in the specified number of decimals.
      */
     function shiftAmount(uint256 _amount, uint8 _fromDecimals, uint8 _toDecimals) private pure returns (uint256) {
+        require(_fromDecimals <= 18 && _toDecimals <= 18, "Decimals must be <= 18");
         if (_toDecimals > _fromDecimals) {
             return _amount * (10 ** (_toDecimals - _fromDecimals));
         } else if (_toDecimals < _fromDecimals) {

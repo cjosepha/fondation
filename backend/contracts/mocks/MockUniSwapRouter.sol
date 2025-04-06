@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {Strings} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/Strings.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IUniswapV2Router02} from '@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol';
 import {MockERC20} from "./MockERC20.sol";
 import {MockAaveOracle} from "./MockAaveOracle.sol";
 
+/**
+ * @title MockUniSwapRouter
+ * @notice A mock implementation of the UniSwap Router interface.
+ * @dev This mock allows for testing of the UniSwap Router contract by providing a controlled environment for simulating
+ *      various scenarios and interactions with the UniSwap protocol.
+ */
 contract MockUniSwapRouter is IUniswapV2Router02 {
 
     using Strings for uint256;

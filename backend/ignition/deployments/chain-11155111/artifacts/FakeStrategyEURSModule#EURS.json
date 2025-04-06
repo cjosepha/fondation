@@ -1,7 +1,7 @@
 {
   "_format": "hh-sol-artifact-1",
-  "contractName": "wBTC",
-  "sourceName": "contracts/wBTC.sol",
+  "contractName": "EURS",
+  "sourceName": "contracts/EURS.sol",
   "abi": [
     {
       "anonymous": false,

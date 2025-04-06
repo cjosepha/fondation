@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {IERC20} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/IERC20.sol";
-import {Strings} from "@aave/core-v3/contracts/dependencies/openzeppelin/contracts/Strings.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
+/**
+ * @title MockERC20
+ * @notice A mock implementation of the ERC20 token interface.
+ * @dev This mock allows for testing of the ERC20 token contract by providing a controlled environment for simulating
+ *      various scenarios and interactions with the ERC20 token.
+ */
 contract MockERC20 is IERC20 {
 
     using Strings for uint256;
