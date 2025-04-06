@@ -6,22 +6,19 @@ import {
     stBTCAddress,
     wBTCAddress,
     aWBTCAddress,
-    fakeStrategyAddress,
-    USDCAddress,
     STBTC_DECIMALS,
     WBTC_DECIMALS,
     EXCHANGE_RATE_DECIMALS,
-    USDC_DECIMALS,
     RATE_DECIMALS
 } from "@/constants"
 import { parseUnits, formatUnits } from 'viem'
 import { useAccount, useReadContract } from "wagmi";
-import stBTCJson from "../../backend/ignition/deployments/chain-11155111/artifacts/FondationModule#stBTC.json"
-import wBTCJson from "../../backend/ignition/deployments/chain-11155111/artifacts/FondationModule#wBTC.json"
-import aWBTCJson from "../../backend/ignition/deployments/chain-11155111/artifacts/FondationModule#aWBTC.json"
-import fondationJson from "../../backend/ignition/deployments/chain-11155111/artifacts/FondationModule#Fondation.json"
-import fakeStrategyJson from '../../backend/ignition/deployments/chain-11155111/artifacts/FondationModule#FakeStrategy.json'
-import USDCJson from '../../backend/ignition/deployments/chain-11155111/artifacts/FondationModule#USDC.json'
+import stBTCJson from "../../backend/ignition/deployments/chain-31337/artifacts/FondationModule#stBTC.json"
+import wBTCJson from "../../backend/ignition/deployments/chain-31337/artifacts/FondationModule#wBTC.json"
+import aWBTCJson from "../../backend/ignition/deployments/chain-31337/artifacts/FondationModule#aWBTC.json"
+import fondationJson from "../../backend/ignition/deployments/chain-31337/artifacts/FondationModule#Fondation.json"
+import fakeStrategyJson from '../../backend/ignition/deployments/chain-31337/artifacts/FondationModule#FakeStrategy.json'
+import USDCJson from '../../backend/ignition/deployments/chain-31337/artifacts/FondationModule#USDC.json'
 
 export const fondation = {
     address: getAddress(fondationAddress),
@@ -43,13 +40,11 @@ export const aWBTC = {
     abi: aWBTCJson.abi
 }
 
-export const USDC = {
-    address: getAddress(USDCAddress),
+export const STABLE = {
     abi: USDCJson.abi
 }
 
 export const fakeStrategy = {
-    address: getAddress(fakeStrategyAddress),
     abi: fakeStrategyJson.abi
 }
 

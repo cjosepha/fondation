@@ -20,19 +20,24 @@ import { useToast } from "@/hooks/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 import { useEffect, useState } from "react"
 import { getAddress } from "viem"
+import { Input } from "@/components/ui/input"
 import { ProgressDialog } from "./ProgressDialog"
 
 interface FondationCardProps {
-    showAccrueYieldButton: boolean;
+    showAdminActions: boolean;
+    onRefresh: () => void;
+    strategyAddress: string;
 }
 
-const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
+const FondationCard = ({ showAdminActions, onRefresh, strategyAddress }: FondationCardProps) => {
 
     const { toast } = useToast()
 
     const [progress, setProgress] = useState(0)
     const [showProgressDialog, setShowProgressDialog] = useState(false)
     const [progressTitle, setProgressTitle] = useState("")
+    const [strategyAddress, setStrategyAddress] = useState("")
+    const [currentAction, setCurrentAction] = useState("");
 
     const { data: hash, writeContract, isPending, isError } = useWriteContract({
         mutation: {
@@ -76,8 +81,10 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
     })
 
     const accueYield = () => {
-        setProgressTitle("Accrue Yield")
+        const action = "Accrue Yield"
+        setCurrentAction(action)
         setProgress(0)
+        setProgressTitle(action)
         setShowProgressDialog(true)
         writeContract({
             abi: fondation.abi,
@@ -86,10 +93,37 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
         })
     }
 
+    const setStrategy = () => {
+        const action = "Set Strategy"
+        setCurrentAction(action)
+        setProgress(0)
+        setProgressTitle(action)
+        setShowProgressDialog(true)
+        writeContract({
+            abi: fondation.abi,
+            address: fondation.address,
+            functionName: "setStrategy",
+            args: [strategyAddress]
+        })
+    }
+
+    const disableStrategy = () => {
+        const action = "Disable Strategy"
+        setCurrentAction(action)
+        setProgress(0)
+        setProgressTitle(action)
+        setShowProgressDialog(true)
+        writeContract({
+            abi: fondation.abi,
+            address: fondation.address,
+            functionName: "disableStrategy"
+        })
+    }
+
     useEffect(() => {
         if (isConfirming) {
             console.log("Confirming", hash)
-            setProgressTitle(`Accrue Yield in progress`)
+            setProgressTitle(`${currentAction} in progress`)
         }
     }, [isConfirming])
 
@@ -97,7 +131,7 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
         let timer : ReturnType<typeof setTimeout>
         if (isConfirmed) {
             console.log("Succeed", hash)
-            const progressTitle = `Accrue Yield successful`
+            const progressTitle = `${currentAction} successful`
             setProgressTitle(progressTitle)
             setProgress(100)
             toast({
@@ -148,10 +182,21 @@ const FondationCard = ({ showAccrueYieldButton }: FondationCardProps) => {
             </CardContent>
             <CardFooter className="flex-auto">
                 <div className="flex flex-row mt-auto mb-auto">
-                    {showAccrueYieldButton && (
-                        <div>
-                            <Button disabled={isLoading || isPending} onClick={accueYield}>Accrue Yield</Button>
-                            <Label className="ml-2 mt-auto mb-auto">Retrieve the strategy yield and tranfer fees to owner.</Label>
+                    {showAdminActions && (
+                        <div className="flex flex-col space-y-2">
+                            <div className="flex flex-row">
+                                <Button disabled={isLoading || isPending} onClick={accueYield}>Accrue Yield</Button>
+                                <Label className="ml-2 mt-auto mb-auto">Retrieve the strategy yield and tranfer fees to owner.</Label>
+                            </div>
+                            <div className="flex flex-row">
+                                <Button disabled={isLoading || isPending} onClick={disableStrategy}>Disable Strategy</Button>
+                                <Label className="ml-2 mt-auto mb-auto">Remove the current strategy and repay debts, allowing full unstaking.</Label>
+                            </div>
+                            <div className="flex flex-row">
+                                <Input type="text" value={strategyAddress} onChange={(e) => setStrategyAddress(e.target.value)} placeholder='Enter a IFondationStrategy address' />
+                                <div className="ml-2 mt-auto mb-auto"></div>
+                                <Button disabled={isLoading || isPending} onClick={setStrategy}>Set Strategy</Button>
+                            </div>
                         </div>
                     )}
                 </div>

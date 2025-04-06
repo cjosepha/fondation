@@ -11,9 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import {
     fakeStrategy,
-    formatFakeStrategyAsset,
-    USDC,
-    parseUSDC
+    STABLE
 } from "@/utils/contract"
 import { useWriteContract, useReadContracts, useWaitForTransactionReceipt } from "wagmi"
 import { useToast } from "@/hooks/use-toast"
@@ -22,9 +20,13 @@ import { useEffect, useState } from "react"
 import { getAddress } from "viem"
 import { useAccount } from "wagmi";
 import { ProgressDialog } from "./ProgressDialog"
+import { parseUnits, formatUnits } from 'viem'
 
+interface StrategyCardProps {
+    strategyAddress: string;
+}
 
-const StrategyCard = () => {
+const StrategyCard = ({ strategyAddress }: StrategyCardProps) => {
 
     const { toast } = useToast()
 
@@ -49,35 +51,36 @@ const StrategyCard = () => {
         data,
         error,
         isLoading,
-        refetch
+        refetch,
+        fakeStrategyAddress,
     } = useReadContracts({
         contracts: [{
             abi: fakeStrategy.abi,
-            address: fakeStrategy.address,
+            address: fakeStrategyAddress,
             functionName: "getYieldAmount"
         }, {
             abi: fakeStrategy.abi,
-            address: fakeStrategy.address,
+            address: fakeStrategyAddress,
             functionName: "getAsset"
         }, {
             abi: fakeStrategy.abi,
-            address: fakeStrategy.address,
+            address: fakeStrategyAddress,
             functionName: "getDecimals"
         }, {
-            abi: USDC.abi,
+            abi: STABLE.abi,
             address: USDC.address,
             functionName: "balanceOf",
             args: [address]
         }, {
-            abi: USDC.abi,
+            abi: STABLE.abi,
             address: USDC.address,
             functionName: "allowance",
             args: [address, fakeStrategy.address]
         }, {
-            abi: USDC.abi,
+            abi: STABLE.abi,
             address: USDC.address,
             functionName: "balanceOf",
-            args: [fakeStrategy.address]
+            args: [fakeStrategyAddress]
         }]
     })
     const [getYieldAmount, getAsset, getDecimals, balance, allowance, balanceOf] = data || []
