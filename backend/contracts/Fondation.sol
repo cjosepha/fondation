@@ -43,6 +43,7 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
 
     uint256 private minimumHealthFactorBorrow = 4 * (10 ** HEALTH_FACTOR_DECIMALS);
     uint256 private minimumHealthFactorWithdraw = 2 * (10 ** HEALTH_FACTOR_DECIMALS);
+    uint256 private swapMaxSlippagePercent = 5;
 
     uint256 public immutable feesRate;
 
@@ -227,7 +228,7 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
             strategyAsset.safeTransfer(msg.sender, fees);
 
             // Price of wBTC in USD with 5% margin up, 8 decimals
-            uint256 wBTCPrice = aaveOracle.getAssetPrice(address(wBTC)) * 105 / 1e2;
+            uint256 wBTCPrice = aaveOracle.getAssetPrice(address(wBTC)) * (100 + swapMaxSlippagePercent) / 1e2;
 
             // Minimum amount of wBTC to receive from the swap
             uint256 minWBTC = (netYield * (10 ** AAVE_BASE_CURRENCY_DECIMALS)) / wBTCPrice;
@@ -255,12 +256,31 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
         }
     }
 
+    event BorrowHealthFactorUpdated(uint256 oldValue, uint256 newValue, uint256 when);
+    event WithdrawHealthFactorUpdated(uint256 oldValue, uint256 newValue, uint256 when);
+    event SwapMaxSlippagePercentUpdated(uint256 oldValue, uint256 newValue, uint256 when);
+
     function setBorrowHealthFactor(uint256 _minimumHealthFactor) external onlyOwner {
+        require(_minimumHealthFactor >= 1e18, "Must not set HF below 1.0");
+        require(_minimumHealthFactor >= minimumHealthFactorWithdraw * 2, "Minimum borrow HF must be at least twice the minimum withdraw HF");
+        uint256 oldValue = minimumHealthFactorBorrow;
         minimumHealthFactorBorrow = _minimumHealthFactor;
+        emit BorrowHealthFactorUpdated(oldValue, _minimumHealthFactor, block.timestamp);
     }
 
     function setWithdrawHealthFactor(uint256 _minimumHealthFactor) external onlyOwner {
+        require(_minimumHealthFactor >= 1e18, "Must not set HF below 1.0");
+        require(minimumHealthFactorBorrow >= _minimumHealthFactor * 2, "Minimum borrow HF must be at least twice the minimum withdraw HF");
+        uint256 oldValue = minimumHealthFactorWithdraw;
         minimumHealthFactorWithdraw = _minimumHealthFactor;
+        emit WithdrawHealthFactorUpdated(oldValue, _minimumHealthFactor, block.timestamp);
+    }
+
+    function setSwapMaxSlippagePercent(uint256 _swapMaxSlippagePercent) external onlyOwner {
+        require(_swapMaxSlippagePercent >= 1 && _swapMaxSlippagePercent <= 10, "Swap max slippage must be between 1 and 10");
+        uint256 oldValue = swapMaxSlippagePercent;
+        swapMaxSlippagePercent = _swapMaxSlippagePercent;
+        emit SwapMaxSlippagePercentUpdated(oldValue, _swapMaxSlippagePercent, block.timestamp);
     }
 
     /////////////////////// 
