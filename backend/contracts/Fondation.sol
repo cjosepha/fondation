@@ -234,7 +234,7 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
             minWBTC = shiftAmount(minWBTC, strategyAssetDecimals, WBTC_DECIMALS);
 
             // Swap netYield amount strategy asset for wBTC on UniSwap
-            strategyAsset.approve(address(swapRouter), netYield);
+            strategyAsset.forceApprove(address(swapRouter), netYield);
             address[] memory path = new address[](2);
             path[0] = address(strategyAsset);
             path[1] = address(wBTC);
@@ -288,8 +288,7 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
             IERC20 strategyAsset = getStrategyERC20();
             uint256 repaidAmount = strategyAsset.balanceOf(address(this));
             
-            bool approved = strategyAsset.approve(address(aavePool), repaidAmount);
-            require(approved, "Strategy asset approval failed");
+            strategyAsset.forceApprove(address(aavePool), repaidAmount);
             
             uint256 repaid = aavePool.repay(
                 strategy.getAsset(),
@@ -309,8 +308,7 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
 
     function supplyToPool(uint256 _wBTCAmount) private {
         // Approve Pool to spend on behalf of Fondation
-        bool approved = wBTC.approve(address(aavePool), _wBTCAmount);
-        require(approved, "wBTC approval failed");
+        wBTC.forceApprove(address(aavePool), _wBTCAmount);
 
         uint256 aWBTCBalanceBeforeSupply = aWBTC.balanceOf(address(this));
 
@@ -330,8 +328,7 @@ contract Fondation is Ownable, ReentrancyGuard, IFondation {
 
     function depositToStrategy(uint256 _strategyAssetAmount) private {
         // Approve IFondationStrategy to spend on behalf of Fondation
-        bool approved = getStrategyERC20().approve(address(strategy), _strategyAssetAmount);
-        require(approved, "IFondationStrategy asset approval failed");
+        getStrategyERC20().forceApprove(address(strategy), _strategyAssetAmount);
         
         // Deposit strategy asset to IFondationStrategy
         strategy.deposit(_strategyAssetAmount);
