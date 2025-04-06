@@ -15,9 +15,10 @@ The dApp is available at : https://fondation-one.vercel.app/
 ### Backend
 
 The following `Fondation` smart contracts are deployed on Sepolia testnet:
-  - Fondation : https://sepolia.etherscan.io/address/0xc0F4288c4B8ee7e06D6B6076F9B043A4865d6498#code
-  - FakeStrategy : https://sepolia.etherscan.io/address/0x699d6D72d5D4Ec9507dF76666A2C3b8Da706605A#code
-  - stBTC : https://sepolia.etherscan.io/address/0x05ad37B2B8bE1cE1BA6a8dd9ce3f85D71f44d381#code
+  - Fondation : https://sepolia.etherscan.io/address/0xaE4A3E14a51209D29892924fCdb39915B38d2113#code
+  - FakeStrategy (USDC) : https://sepolia.etherscan.io/address/0xF54A1e99B20964961683B3691a893B775E1a1E13#code
+  - FakeStrategy (EURS) : https://sepolia.etherscan.io/address/0x131C38E6870A1253D19e0a04ee7462a71D86A348#code
+  - stBTC : https://sepolia.etherscan.io/address/0xCAB088433646c4d4e021B434EF55f15C1537Ee6F#code
 
 The `Fondation` smart contract also interacts with the following existing contracts:
   - AAVE Pool : https://sepolia.etherscan.io/address/0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951#code
